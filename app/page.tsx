@@ -3,8 +3,8 @@
 import { VscReferences, VscWholeWord, } from "react-icons/vsc";
 import { FaBrain } from "react-icons/fa";
 import Header from "@/app/Header/Header.jsx"
-
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 
 export default function HomePage() {
   const [visibleSections, setVisibleSections] = useState(new Set());
@@ -43,9 +43,11 @@ export default function HomePage() {
           <p className="text-xl text-gray-600 mb-8 animate-fade-in-up animation-delay-200">
             Simplifying your University Life
           </p>
-          <button  className="px-8 py-4 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-colors animate-fade-in-up animation-delay-400">
-            Get Started
-          </button>
+          <Link href="/signup">
+            <button  className="px-8 py-4 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-colors animate-fade-in-up animation-delay-400">
+              Get Started
+            </button>
+          </Link>
         </div>
       </section>
 
@@ -180,8 +182,6 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      /* In layout.tsx */
-
 
       <style jsx>{`
         @keyframes fadeInUp {

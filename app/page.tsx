@@ -2,6 +2,7 @@
 
 import { VscReferences, VscWholeWord, } from "react-icons/vsc";
 import { FaBrain } from "react-icons/fa";
+import Header from "@/app/Header/Header.jsx"
 
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -31,26 +32,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white text-black font-['Inter']">
       {/* Header */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="text-2xl font-bold">Universitifier</div>
-          
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#about" className="text-gray-700 hover:text-purple-600 transition-colors">About</a>
-            <a href="#features" className="text-gray-700 hover:text-purple-600 transition-colors">Features</a>
-            <a href="#upcoming" className="text-gray-700 hover:text-purple-600 transition-colors">Upcoming</a>
-          </nav>
-          
-          <div className="flex items-center gap-4">
-            <button className="px-4 py-2 text-gray-700 hover:text-purple-600 transition-colors">
-              Login
-            </button>
-            <button className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-              Get Started
-            </button>
-          </div>
-        </div>
-      </header>
+      /* In the layout.tsx*/
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
@@ -59,9 +41,9 @@ export default function HomePage() {
             Get All Your University Tools In One Place
           </h1>
           <p className="text-xl text-gray-600 mb-8 animate-fade-in-up animation-delay-200">
-Simplifying your University Life
+            Simplifying your University Life
           </p>
-          <button className="px-8 py-4 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-colors animate-fade-in-up animation-delay-400">
+          <button  className="px-8 py-4 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-colors animate-fade-in-up animation-delay-400">
             Get Started
           </button>
         </div>
@@ -198,40 +180,8 @@ Simplifying your University Life
       </section>
 
       {/* Footer */}
-      <footer className="bg-black text-white py-12 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="text-xl font-bold mb-4 text-purple-400">Universitifier</h3>
-              <p className="text-gray-400">Simplifying your University Life</p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#features" className="hover:text-purple-400 transition-colors">Features</a></li>
-                <li><a href="#upcoming" className="hover:text-purple-400 transition-colors">Upcoming</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#about" className="hover:text-purple-400 transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-purple-400 transition-colors">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-purple-400 transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-purple-400 transition-colors">Terms</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
-            <p>&copy; 2026 Universitifier. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      /* In layout.tsx */
+
 
       <style jsx>{`
         @keyframes fadeInUp {

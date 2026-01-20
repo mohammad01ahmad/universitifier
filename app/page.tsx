@@ -32,7 +32,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white text-black font-['Inter']">
       {/* Header */}
-      /* In the layout.tsx*/
+      {/* In the layout.tsx */}
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">

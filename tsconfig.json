@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "app/controllers/controllers.js"  ],
+, "app/controllers/controllers.js", "app/UI/Videobackground.jsx"  ],
   "exclude": ["node_modules"]
 }

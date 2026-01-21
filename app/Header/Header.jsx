@@ -18,7 +18,7 @@ function Header() {
           <div className="flex items-center gap-4">
             <Link href="/signin">
             <button className="px-4 py-2 text-gray-700 hover:text-purple-600 transition-colors cursor-pointer">
-              Login
+              Sign In
             </button>
             </Link>
             <Link href="/signup">

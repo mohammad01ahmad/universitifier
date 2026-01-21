@@ -3,9 +3,15 @@
 import React, { useState } from 'react'
 import { FcGoogle } from 'react-icons/fc'
 import Link from 'next/link'
-import { validatePasswordWithData } from '@/app/controllers/controllers.js'
+import { validatePasswordWithData } from '@/app/controllers/controllers'
+import { auth } from '@/app/Database/Firebase'
+import { db } from '@/app/Database/Firebase'
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
+import { useRouter } from 'next/navigation'
 
 function page() {
+  const router = useRouter()
 
   const [formData, setFormData] = useState({
     name: '',
@@ -21,6 +27,10 @@ function page() {
   const [success, setSuccess] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target || !e.target.name || !e.target.value) {
+      console.warn('Invalid input event', e)
+      return
+    }
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -50,7 +60,7 @@ function page() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
 
@@ -64,18 +74,45 @@ function page() {
 
     // TODO: Add form submission logic here
     console.log('Form submitted', formData)
-    setSuccess(true)
-    setIsSubmitting(false)
-    setTimeout(() => {
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
+      console.log('User created', userCredential)
+
+      const userDocRef = doc(db, 'users', userCredential.user.uid)
+      await setDoc(userDocRef, {
+        name: formData.name,
+        email: formData.email,
+        university: formData.university,
+        profileCompleted: true,
+      });
+      setSuccess(true)
+      setIsSubmitting(false)
+      setTimeout(() => {
       setSuccess(false)
-    }, 3000)
-    setFormData({
-      name: '',
-      email: '',
-      university: '',
-      password: '',
-    })
-  }
+      }, 3000)
+      setFormData({
+        name: '',
+        email: '',
+        university: '',
+        password: '',
+      });
+    } catch (error: any) {
+      console.error('Error creating user:', error)
+      setIsError(true)
+      setIsSubmitting(false)
+
+      if (error.code === 'auth/email-already-in-use') {
+      setErrors(['Email is already in use'])
+      } else if (error.code === 'auth/invalid-email') {
+        setErrors(['Invalid email address'])
+      } else if (error.code === 'auth/weak-password') {
+        setErrors(['Password is too weak'])
+      } else {
+        setErrors(['An error occurred. Please try again.'])
+      }
+    };
+  };
 
   const validateForm = () => {
     // Create local array and check name, email, university
@@ -101,6 +138,48 @@ function page() {
     setErrors(newErrors)  
     return newErrors.length === 0 
   }
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log('User signed in with Google', user);
+
+      // Check if user exists in firebase
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      // Does not exist
+      if (!userDoc.exists()){
+        await setDoc(userDocRef, {
+          name: user.displayName,
+          email: user.email,
+          university: null,
+          profileCompleted: false,
+        });
+        router.push('/completeprofile'); // redirect to complete-profile for university data
+
+      }else{
+        // Exists
+        const userData = userDoc.data()
+        if (!userData.university || !userData.profileCompleted) {
+          router.push('/completeprofile'); // redirect to complete-profile for university data
+        }
+        router.push('/profile'); // redirect to profile
+      }
+      setIsSubmitting(false)
+      
+    } catch (error: any) {
+      console.error('Error signing in with Google:', error);
+      if (error.code === 'auth/popup-closed-by-user'){
+        setErrors(['Sign-in cancelled'])
+      } else {
+        setErrors(['Failed to sign in with Google'])
+      }
+      setIsError(true)
+    }
+  };
 
   return (
     <div className='bg-white min-h-screen w-full flex items-center justify-center pt-20 pb-12'>
@@ -148,6 +227,12 @@ function page() {
               onChange={handlePasswordChange}
             />
 
+            {success && (
+              <div className='text-green-600 text-sm font-semibold text-center bg-green-50 p-3 rounded-lg border border-green-200'>
+                ✓ Account created successfully!
+              </div>
+            )}
+
             {isError && errors.length > 0 && (
               <div className='text-red-500 text-sm'>
                 {errors.map((error, index) => (
@@ -173,6 +258,8 @@ function page() {
             
             <button 
               type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isSubmitting}
               className='px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2'
             >
               <FcGoogle className='text-xl' />

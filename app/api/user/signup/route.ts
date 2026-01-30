@@ -2,6 +2,8 @@ import { adminAuth, adminDb } from "@/app/Database/firebaseAdmin";
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 
+// Secure sign up route for admin
+
 export async function POST(request: Request) {
     const body = await request.json()
     const { formData } = body

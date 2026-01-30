@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { JSDOM } from 'jsdom'
 import got from 'got'
 
+// Secure website reference route for admin
+
 export async function POST(request: any) {
     const formData = await request.json()
 

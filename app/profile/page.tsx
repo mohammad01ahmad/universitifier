@@ -5,16 +5,19 @@ import { auth, db } from '@/app/Database/Firebase'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
-import { CgWebsite } from "react-icons/cg";
+import { FaRegCopy } from "react-icons/fa6";
+import { MdDone } from "react-icons/md";
 
-function page() {
+function Page() {
   const router = useRouter()
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refLoading, setRefLoading] = useState(false)
 
   const [selectedType, setSelectedType] = useState('website')
-  const [formData, setFormData] = useState<any>('')
+  const [formData, setFormData] = useState<any>({})
   const [generatedReference, setGeneratedReference] = useState('')
+  const [copyButtonText, setCopyButtonText] = useState(false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -58,65 +61,89 @@ function page() {
       ...formData,
       [e.target.name]: e.target.value
     })
-    console.log("Form Data", formData)
   }
 
   const generateReference = async () => {
     let reference = ''
+    setRefLoading(true)
 
-    switch (selectedType) {
-      case 'website':
-        // Author(s) (Year) Title. Available at: URL (Accessed: Date)
-        // send data to server
-        console.log("Sending data to API", formData)
-        const response = await fetch('/api/reference/website', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(formData)
-        })
-        const data = await response.json()
+    try {
+      switch (selectedType) {
+        case 'website':
+          console.log("Sending data to API", formData)
+          const response = await fetch('/api/reference/website', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          })
+          const data = await response.json()
 
-        let title = data.titleElementText
-        const author = data.author
-        const year = data.year
+          const title = data.title
+          const author = data.author
+          const year = data.year
 
-        console.log("Recieved data from API response", data)
-        reference = `${author}. (${year}). ${title}. [online] Available at: ${formData.url} [Accessed: ${new Date().toLocaleDateString()}.]`
-        setGeneratedReference(reference)
-        console.log("Generated Reference", reference)
-        break
+          console.log("Received data from API response", data)
+          reference = `${author}. (${year}). ${title}. [online] Available at: ${formData.url} [Accessed: ${new Date().toLocaleDateString()}.]`
+          break
 
+        case 'book':
+          reference = `${formData.author || 'Author'} (${formData.year || 'Year'}) ${formData.title || 'Title'}. ${formData.edition ? formData.edition + '. ' : ''}${formData.place || 'Place'}: ${formData.publisher || 'Publisher'}.`
+          break
 
+        case 'PDF':
+          console.log("Sending PDF data to API", formData)
+          const pdfResponse = await fetch('/api/reference/pdf', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url: formData.url })
+          })
+          const pdfData = await pdfResponse.json()
 
-      case 'book':
-        // Author(s) (Year) Title. Edition. Place: Publisher.
-        reference = `${formData.author || 'Author'} (${formData.year || 'Year'}) ${formData.title || 'Title'}. ${formData.edition ? formData.edition + '. ' : ''}${formData.place || 'Place'}: ${formData.publisher || 'Publisher'}.`
-        break
+          reference = `${pdfData.author}. (${pdfData.year}). ${pdfData.title} [PDF]. Available at: ${formData.url} [Accessed: ${pdfData.accessDate}]`
+          break
 
-      case 'journal':
-        // Author(s) (Year) 'Article title', Journal Name, Volume(Issue), pp. pages.
-        reference = `${formData.author || 'Author'} (${formData.year || 'Year'}) '${formData.articleTitle || 'Article title'}', ${formData.journalName || 'Journal Name'}, ${formData.volume || 'Volume'}(${formData.issue || 'Issue'}), pp. ${formData.pages || 'pages'}.`
-        break
+        case 'video':
+          console.log("Sending Video data to API", formData)
+          const responseVideo = await fetch('/api/reference/video', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+          })
+          const dataVideo = await responseVideo.json()
 
-      case 'video':
-        // Author/Username (Year) Title. Available at: URL (Accessed: Date)
-        reference = `${formData.author || 'Author/Username'} (${formData.year || 'Year'}) ${formData.title || 'Title'} [Video]. Available at: ${formData.url || 'URL'} (Accessed: ${formData.accessDate || 'Date'}).`
-        break
+          const titleVideo = dataVideo.title
+          const authorVideo = dataVideo.author
+          const yearVideo = dataVideo.year
+
+          console.log("Received data from API response", dataVideo)
+          reference = `${authorVideo}. (${yearVideo}). ${titleVideo}. [online] Available at: ${formData.url} [Accessed: ${new Date().toLocaleDateString()}.]`
+          break
+      }
+      setGeneratedReference(reference)
+    } catch (error) {
+      console.error('Error generating reference:', error)
+    } finally {
+      setRefLoading(false)
     }
-
-    setGeneratedReference(reference)
   }
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedReference)
-    alert('Reference copied to clipboard!')
+    setCopyButtonText(true)
+    setTimeout(() => {
+      setCopyButtonText(false)
+    }, 3000)
   }
 
-  const clearForm = () => {
-    setFormData({})
+  const handleAgain = () => {
     setGeneratedReference('')
+    setFormData({})
   }
 
   return (
@@ -136,7 +163,7 @@ function page() {
         </div>
       </section>
 
-      {/* Your other profile content can go here */}
+      {/* Harvard Reference Generator */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-4xl font-bold mb-4 text-center">Harvard Reference Generator</h2>
@@ -144,8 +171,7 @@ function page() {
 
           {/* Source Type Selector */}
           <div className="flex gap-2 mb-6 flex-wrap justify-center">
-
-            {['website', 'book', 'journal', 'video'].map((type) => (
+            {['website', 'book', 'PDF', 'video'].map((type) => (
               <button
                 key={type}
                 onClick={() => {
@@ -153,7 +179,7 @@ function page() {
                   setFormData({})
                   setGeneratedReference('')
                 }}
-                className={`px-6 py-3 rounded-lg font-semibold capitalize transition-colors ${selectedType === type
+                className={`px-6 py-3 rounded-lg font-semibold capitalize transition-colors cursor-pointer ${selectedType === type
                   ? 'bg-purple-600 text-white'
                   : 'bg-white text-gray-700 border border-gray-300 hover:border-purple-600'
                   }`}
@@ -163,87 +189,92 @@ function page() {
             ))}
           </div>
 
-          {/* Form Fields */}
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200 mb-6">
-            {selectedType === 'website' && (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  name="url"
-                  placeholder="Paste a Website URL (e.g. https://example.com)"
-                  value={formData.url || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                />
-              </div>
-            )}
+          {/* Form or Generated Reference */}
+          {!generatedReference ? (
+            <div className={`bg-white p-8 rounded-lg shadow-sm border border-gray-200 mb-6 relative ${refLoading ? 'pointer-events-none' : ''}`}>
+              {refLoading && (
+                <div className="backdrop-blur-md absolute inset-0 flex items-center justify-center bg-white/50 rounded-lg z-10">
+                  <div className="text-xl font-semibold text-purple-600">Loading...</div>
+                </div>
+              )}
 
-            {selectedType === 'book' && (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  name="author"
-                  placeholder="Paste a Book URL (e.g. https://example.com)"
-                  value={formData.author || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                />
+              {selectedType === 'website' && (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    name="url"
+                    placeholder="Paste a Website URL (e.g. https://example.com)"
+                    value={formData.url || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+              )}
 
-              </div>
-            )}
+              {selectedType === 'book' && (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    name="url"
+                    placeholder="Paste a Book URL (e.g. https://example.com/book.pdf)"
+                    value={formData.url || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+              )}
 
-            {selectedType === 'journal' && (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  name="author"
-                  placeholder="Paste a Journal URL (e.g. https://example.com)"
-                  value={formData.author || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                />
-              </div>
-            )}
+              {selectedType === 'PDF' && (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    name="url"
+                    placeholder="Paste a PDF URL (e.g. https://example.com/paper.pdf)"
+                    value={formData.url || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+              )}
 
-            {selectedType === 'video' && (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  name="author"
-                  placeholder="Paste a Video URL (e.g. https://example.com)"
-                  value={formData.author || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                />
-              </div>
-            )}
+              {selectedType === 'video' && (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    name="url"
+                    placeholder="Paste a Video URL (e.g. https://youtube.com/watch?v=...)"
+                    value={formData.url || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+              )}
 
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={generateReference}
-                className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
-              >
-                Generate Reference
-              </button>
-              <button
-                onClick={clearForm}
-                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-
-          {/* Generated Reference Display */}
-          {generatedReference && (
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-lg font-semibold">Generated Reference:</h3>
+              <div className="flex gap-4 mt-6">
                 <button
-                  onClick={copyToClipboard}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold"
+                  onClick={generateReference}
+                  disabled={refLoading}
+                  className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold disabled:opacity-50 cursor-pointer"
                 >
-                  Copy
+                  Generate Reference
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex justify-between items-center mb-4">
+                <button
+                  onClick={handleAgain}
+                  className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
+                >
+                  Again
+                </button>
+                <button
+
+                  onClick={copyToClipboard}
+                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold cursor-pointer"
+                >
+                  {copyButtonText ? <MdDone className="w-5 h-6 transition-all duration-300" /> : <FaRegCopy className="w-5 h-6" />}
                 </button>
               </div>
               <p className="text-gray-800 leading-relaxed border-l-4 border-purple-600 pl-4 py-2 bg-purple-50">
@@ -253,7 +284,6 @@ function page() {
           )}
         </div>
       </section>
-
 
       <style jsx>{`
         @keyframes fadeInUp {
@@ -280,10 +310,9 @@ function page() {
           animation-delay: 0.4s;
           opacity: 0;
         }
-      `}
-      </style>
+      `}</style>
     </div>
   )
 }
 
-export default page
+export default Page

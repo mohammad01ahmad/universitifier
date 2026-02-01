@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/app/Database/Firebase"
 import { useRouter } from "next/navigation";
+import Image from 'next/image';
 
 export default function HomePage() {
   const [visibleSections, setVisibleSections] = useState(new Set());
@@ -64,7 +65,7 @@ export default function HomePage() {
             Simplifying your University Life
           </p>
           <Link href="/signup">
-            <button className="px-8 py-4 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-colors animate-fade-in-up animation-delay-400">
+            <button className="px-8 py-4 bg-purple-600 text-white rounded-lg text-lg hover:bg-purple-700 transition-colors animate-fade-in-up animation-delay-400 cursor-pointer">
               Get Started
             </button>
           </Link>
@@ -91,8 +92,14 @@ export default function HomePage() {
                 We believe in making tools that students really need to save time and energy.
               </p>
             </div>
-            <div className="bg-purple-100 h-64 rounded-lg flex items-center justify-center">
-              <span className="text-purple-600 font-semibold">[About Image Placeholder]</span>
+            <div className="relative w-full h-64 rounded-lg overflow-hidden">
+              <Image
+                src="/second-section-picture.jpg"
+                alt="University Students Working on Assignment"
+                fill
+                className="rounded-lg object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
             </div>
           </div>
         </div>

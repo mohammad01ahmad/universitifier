@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "cheerio": "^1.1.2",
+    "cheerio": "^1.2.0",
     "firebase": "^12.8.0",
     "firebase-admin": "^13.6.0",
     "got": "^14.6.6",

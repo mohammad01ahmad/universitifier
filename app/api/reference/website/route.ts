@@ -1,52 +1,51 @@
-
 import { NextResponse } from "next/server";
-import { JSDOM } from 'jsdom'
-import got from 'got'
+import * as cheerio from 'cheerio';
 
-// Secure website reference route for admin
-
-export async function POST(request: any) {
+export async function POST(request: Request) {
     try {
-        const { url } = await request.json()
+        const { url } = await request.json();
 
         if (!url) {
-            return NextResponse.json({ error: 'URL is required' }, { status: 400 })
+            return NextResponse.json({ error: 'URL is required' }, { status: 400 });
         }
 
-        const html = await got(url, {
+        // Fetching HTML with your User-Agent to prevent blocking
+        const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
             },
-            timeout: { request: 10000 }
-        }).then(res => res.body)
+            next: { revalidate: 3600 } // Optional: cache for 1 hour
+        });
 
-        const dom = new JSDOM(html)
-        const doc = dom.window.document
-
-        // Helper function to try multiple selectors
-        const trySelectors = (selectors: string[], attr?: string) => {
-            for (const selector of selectors) {
-                const element = doc.querySelector(selector)
-                if (element) {
-                    const value = attr ? element.getAttribute(attr) : element.textContent
-                    if (value?.trim()) return value.trim()
-                }
-            }
-            return null
+        if (!response.ok) {
+            throw new Error(`Failed to fetch website: ${response.statusText}`);
         }
 
-        // Get Title
+        const html = await response.text();
+        const $ = cheerio.load(html);
+
+        // Helper function to try multiple selectors using Cheerio
+        const trySelectors = (selectors: string[], attr?: string) => {
+            for (const selector of selectors) {
+                const element = $(selector);
+                if (element.length) {
+                    const value = attr ? element.attr(attr) : element.text();
+                    if (value?.trim()) return value.trim();
+                }
+            }
+            return null;
+        };
+
+        // 1. Get Title
         const title = trySelectors([
             'meta[property="og:title"]',
             'meta[name="twitter:title"]',
             'meta[property="citation_title"]',
-            'h1',
-            'title'
-        ], 'content') || trySelectors(['h1', 'title']) || 'Title not found'
+        ], 'content') || trySelectors(['h1', 'title']) || 'Title not found';
 
-        // Get Author
+        // 2. Get Author
         const author = trySelectors([
             'meta[property="article:author"]',
             'meta[name="author"]',
@@ -60,9 +59,9 @@ export async function POST(request: any) {
             '.byline',
             '.article-author',
             '[itemprop="author"]'
-        ]) || 'Author not found'
+        ]) || 'Author not found';
 
-        // Get Year
+        // 3. Get Date String
         const dateStr = trySelectors([
             'meta[property="article:published_time"]',
             'meta[name="publication_date"]',
@@ -78,20 +77,23 @@ export async function POST(request: any) {
             'time',
             '.date',
             '.publish-date'
-        ])
+        ]);
 
-        // Extract year from date string
-        let year = 'Year not found'
+        // 4. Extract year from date string
+        let year = 'Year not found';
         if (dateStr) {
-            const yearMatch = dateStr.match(/\b(19|20)\d{2}\b/)
-            if (yearMatch) year = yearMatch[0]
+            const yearMatch = dateStr.match(/\b(19|20)\d{2}\b/);
+            if (yearMatch) year = yearMatch[0];
         }
 
-        console.log(title, author, year)
-        return NextResponse.json({ title, author, year })
+        console.log('Extracted Data:', { title, author, year });
+        return NextResponse.json({ title, author, year });
 
-    } catch (error) {
-        console.error('Error fetching data:', error)
-        return NextResponse.json({ error: 'Error fetching data' }, { status: 500 })
+    } catch (error: any) {
+        console.error('Error fetching data:', error.message);
+        return NextResponse.json({
+            error: 'Error fetching data',
+            details: error.message
+        }, { status: 500 });
     }
 }

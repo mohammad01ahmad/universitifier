@@ -46,20 +46,29 @@ export async function POST(request: Request) {
         ], 'content') || trySelectors(['h1', 'title']) || 'Title not found';
 
         // 2. Get Author
-        const author = trySelectors([
-            'meta[property="article:author"]',
-            'meta[name="author"]',
-            'meta[name="citation_author"]',
-            'meta[name="citation_authors"]',
-            'meta[name="DC.creator"]',
-            'meta[property="author"]',
-        ], 'content') || trySelectors([
-            '[rel="author"]',
-            '.author',
-            '.byline',
-            '.article-author',
-            '[itemprop="author"]'
-        ]) || 'Author not found';
+        let author = 'Author not found';
+
+        // Strategy A: Collect all citation_author tags (Common in ScienceDirect)
+        const metaAuthors: string[] = [];
+        $('meta[name="citation_author"]').each((_, el) => {
+            const name = $(el).attr('content');
+            if (name) metaAuthors.push(name);
+        });
+
+        if (metaAuthors.length > 0) {
+            author = metaAuthors.length > 3
+                ? `${metaAuthors[0]} et al.`
+                : metaAuthors.join(', ');
+        } else {
+            // Strategy B: Fallback to general selectors but with a length check
+            const fallbackAuthor = $('meta[name="author"]').attr('content') || $('.author').first().text().trim();
+            // If the "author" is longer than 200 chars, it's likely an abstract by mistake
+            if (fallbackAuthor && fallbackAuthor.length < 200) {
+                author = fallbackAuthor;
+            }
+        }
+
+
 
         // 3. Get Date String
         const dateStr = trySelectors([

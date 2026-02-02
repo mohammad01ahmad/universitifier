@@ -5,8 +5,6 @@ import { auth, db } from '@/app/Database/Firebase'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
-import { FaRegCopy } from "react-icons/fa6";
-import { MdDone } from "react-icons/md";
 import { ReferenceGenerator } from '../components/ReferenceGenerator'
 
 function Page() {
@@ -69,6 +67,8 @@ function Page() {
       </section>
 
       <ReferenceGenerator />
+
+
 
       <style jsx>{`
         @keyframes fadeInUp {

@@ -35,7 +35,7 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts",
-    "controllers/controllers.js",
+    "controllers/controllers.ts",
     "app/UI/Videobackground.jsx"
   ],
   "exclude": [

@@ -3,13 +3,16 @@
 import React, { useState } from 'react'
 import { FcGoogle } from 'react-icons/fc'
 import Link from 'next/link'
-import { validatePasswordWithData } from '@/controllers/controllers'
+import { validatePassword, validateForm } from '@/controllers/formValidation'
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { db, auth } from '@/lib/Database/Firebase'
 import { useRouter } from 'next/navigation'
+import { FirebaseError } from 'firebase/app'
 
-function page() {
+type FieldErrors = Partial<Record<'name' | 'email' | 'university' | 'password', string[]>>
+
+function Page() {
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -22,13 +25,13 @@ function page() {
   const provider = new GoogleAuthProvider();
 
   // const [visiblePassword, setVisiblePassword] = useState(false)
-  const [errors, setErrors] = useState<string[]>([])
-  const [isError, setIsError] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target || !e.target.name || !e.target.value) {
+    if (!e.target || !e.target.name) {
       console.warn('Invalid input event', e)
       return
     }
@@ -36,9 +39,14 @@ function page() {
       ...formData,
       [e.target.name]: e.target.value,
     })
-    console.log(e.target.name, ' is changed ', e.target.value)
+    setFieldErrors((prev) => ({
+      ...prev,
+      [e.target.name]: undefined,
+    }))
+    setFormError('')
   }
 
+  // Password Change Handler (UI Only)
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // FIX: Update formData FIRST, then validate
     const newPassword = e.target.value
@@ -47,17 +55,21 @@ function page() {
       ...formData,
       password: newPassword,
     })
+    setFormError('')
 
     // Now validate with the new password value
-    const tempFormData = { ...formData, password: newPassword }
-    const passwordErrors = validatePasswordWithData(tempFormData)
+    const passwordValidation = validatePassword(newPassword)
 
-    if (passwordErrors === true) {
-      setIsError(false)
-      setErrors([])
+    if (passwordValidation.isValid) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        password: undefined,
+      }))
     } else {
-      setIsError(true)
-      setErrors(passwordErrors)
+      setFieldErrors((prev) => ({
+        ...prev,
+        password: passwordValidation.fieldErrors.password,
+      }))
     }
   }
 
@@ -66,15 +78,15 @@ function page() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    const isValid = validateForm()
-    if (!isValid) {
-      setIsError(true)
+    const validation = validateForm(formData)
+    if (!validation.isValid) {
+      setFieldErrors(validation.fieldErrors)
+      setFormError('')
       setIsSubmitting(false)
       return
     }
-    setIsError(false)
-    console.log('Step 1:Form is valid')
-
+    setFieldErrors({})
+    setFormError('')
 
     try {
       // 1. Create user in Firebase Auth (Client SDK)
@@ -88,9 +100,10 @@ function page() {
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         name: formData.name,
         email: formData.email,
-        university: formData.university,
+        universityName: formData.university,
         profileCompleted: false,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       })
 
       // 3. User is automatically signed in
@@ -108,53 +121,36 @@ function page() {
         university: '',
         password: '',
       });
-    } catch (error: any) {
-      console.error('Error creating user:', error)
-      setIsError(true)
+      setFieldErrors({})
+    } catch (error) {
       setIsSubmitting(false)
 
-      if (error.code === 'auth/email-already-in-use') {
-        setErrors(['Email is already in use'])
-      } else if (error.code === 'auth/invalid-email') {
-        setErrors(['Invalid email address'])
-      } else if (error.code === 'auth/weak-password') {
-        setErrors(['Password is too weak'])
+      if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
+        setFieldErrors((prev) => ({
+          ...prev,
+          email: ['Email is already in use'],
+        }))
+      } else if (error instanceof FirebaseError && error.code === 'auth/invalid-email') {
+        setFieldErrors((prev) => ({
+          ...prev,
+          email: ['Invalid email address'],
+        }))
+      } else if (error instanceof FirebaseError && error.code === 'auth/weak-password') {
+        setFieldErrors((prev) => ({
+          ...prev,
+          password: ['Password is too weak'],
+        }))
       } else {
-        setErrors(['An error occurred. Please try again.'])
+        setFormError('An error occurred. Please try again.')
       }
     };
   };
-
-  const validateForm = () => {
-    // Create local array and check name, email, university
-    const newErrors: string[] = []
-
-    if (formData.name.length < 1) {
-      newErrors.push('Name is required')
-    }
-    if (formData.email.length < 1) {
-      newErrors.push('Email is required')
-    }
-    if (formData.university.length < 1) {
-      newErrors.push('University is required')
-    }
-
-    // Validate password
-    const passwordErrors = validatePasswordWithData(formData)
-    if (passwordErrors !== true) {
-      newErrors.push(...passwordErrors)
-    }
-
-    // Set all at once
-    setErrors(newErrors)
-    return newErrors.length === 0
-  }
 
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      console.log('User signed in with Google', user);
+      // console.log('User signed in with Google', user);
 
       // Check if user exists in firebase
       const userDocRef = doc(db, 'users', user.uid);
@@ -165,31 +161,30 @@ function page() {
         await setDoc(userDocRef, {
           name: user.displayName,
           email: user.email,
-          university: null,
+          universityName: null,
           profileCompleted: false,
-          userID: user.uid,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
-        router.push('/completeprofile'); // redirect to complete-profile for university data
+        router.push('/complete-profile'); // redirect to complete-profile for university data
 
       } else {
         // Exists
         const userData = userDoc.data()
-        if (!userData.university || !userData.profileCompleted) {
-          router.push('/completeprofile'); // redirect to complete-profile for university data
+        if (!userData.universityName || !userData.profileCompleted) {
+          router.push('/complete-profile'); // redirect to complete-profile for university data
         }
         router.push('/profile'); // redirect to profile
       }
       setIsSubmitting(false)
 
-    } catch (error: any) {
-      console.error('Error signing in with Google:', error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        setErrors(['Sign-in cancelled'])
+    } catch (error) {
+      // console.error('Error signing in with Google:', error);
+      if (error instanceof FirebaseError && error.code === 'auth/popup-closed-by-user') {
+        setFormError('Sign-in cancelled')
       } else {
-        setErrors(['Failed to sign in with Google'])
+        setFormError('Failed to sign in with Google')
       }
-      setIsError(true)
     }
   };
 
@@ -198,46 +193,65 @@ function page() {
       <form onSubmit={handleSubmit} className='flex flex-col gap-4 w-full max-w-md p-8 border border-gray-200 rounded-lg'>
         <h1 className='text-3xl font-bold text-center mb-4 text-black'>Sign Up</h1>
 
-        <input
-          type="text"
-          placeholder='Name'
-          name='name'
-          required
-          className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600'
-          value={formData.name}
-          onChange={handleChange}
-        />
+        <div>
+          <input
+            type="text"
+            placeholder='Name'
+            name='name'
+            required
+            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
+            value={formData.name}
+            onChange={handleChange}
+          />
+          {fieldErrors.name?.map((error) => (
+            <p key={error} className='mt-1 text-sm text-red-500'>{error}</p>
+          ))}
+        </div>
 
-        <input
-          type="email"
-          placeholder='Email'
-          name='email'
-          required
-          className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600'
-          value={formData.email}
-          onChange={handleChange}
+        <div>
+          <input
+            type="email"
+            placeholder='Email'
+            name='email'
+            required
+            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
+            value={formData.email}
+            onChange={handleChange}
+          />
+          {fieldErrors.email?.map((error) => (
+            <p key={error} className='mt-1 text-sm text-red-500'>{error}</p>
+          ))}
+        </div>
 
-        />
+        <div>
+          <input
+            type="text"
+            placeholder='University Name'
+            name='university'
+            required
+            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
+            value={formData.university}
+            onChange={handleChange}
+          />
+          {fieldErrors.university?.map((error) => (
+            <p key={error} className='mt-1 text-sm text-red-500'>{error}</p>
+          ))}
+        </div>
 
-        <input
-          type="text"
-          placeholder='University Name'
-          name='university'
-          required
-          className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600'
-          value={formData.university}
-          onChange={handleChange}
-        />
-
-        <input
-          type="password"
-          placeholder='Password'
-          name='password'
-          required
-          className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600'
-          value={formData.password}
-          onChange={handlePasswordChange}
-        />
+        <div>
+          <input
+            type="password"
+            placeholder='Password'
+            name='password'
+            required
+            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
+            value={formData.password}
+            onChange={handlePasswordChange}
+          />
+          {fieldErrors.password?.map((error) => (
+            <p key={error} className='mt-2 text-sm text-red-500'>{error}</p>
+          ))}
+        </div>
 
         {success && (
           <div className='text-green-600 text-sm font-semibold text-center bg-green-50 p-3 rounded-lg border border-green-200'>
@@ -245,11 +259,9 @@ function page() {
           </div>
         )}
 
-        {isError && errors.length > 0 && (
-          <div className='text-red-500 text-sm'>
-            {errors.map((error, index) => (
-              <p key={index}>• {error}</p>
-            ))}
+        {formError && (
+          <div className='text-red-500 text-sm text-center'>
+            <p>{formError}</p>
           </div>
         )}
 
@@ -288,4 +300,4 @@ function page() {
   )
 }
 
-export default page
+export default Page

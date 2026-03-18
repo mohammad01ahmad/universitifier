@@ -56,9 +56,9 @@ export default function HomePage() {
       {/* In the layout.tsx */}
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 mt-15 leading-tight animate-fade-in-up">
+      <section className="pt-32 pb-20 px-6 min-h-screen flex items-center">
+        <div className="max-w-6xl mx-auto text-center">
+          <h1 className="text-6xl md:text-6xl font-bold mb-6 mt-15 leading-tight animate-fade-in-up">
             Get All Your University Tools In One Place
           </h1>
           <p className="text-xl text-gray-600 mb-8 animate-fade-in-up animation-delay-200">

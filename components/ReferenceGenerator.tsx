@@ -4,47 +4,94 @@ import { FaRegCopy } from "react-icons/fa6";
 import { MdDone } from "react-icons/md";
 import { FaSortAlphaDown } from "react-icons/fa";
 
+type ReferenceType = 'website' | 'book' | 'PDF' | 'video'
+
+type ReferenceFormData = {
+    url?: string
+    author?: string
+    year?: string
+    title?: string
+    edition?: string
+    place?: string
+    publisher?: string
+}
+
+type ApiSuccessResponse = {
+    title: string
+    author: string
+    year: string
+    accessDate?: string
+}
+
+type ApiErrorResponse = {
+    error?: string
+}
+
 export const ReferenceGenerator = () => {
     const [refLoading, setRefLoading] = useState(false)
-    const [selectedType, setSelectedType] = useState('website')
-    const [formData, setFormData] = useState<any>({})
+    const [selectedType, setSelectedType] = useState<ReferenceType>('website')
+    const [formData, setFormData] = useState<ReferenceFormData>({})
     const [generatedReference, setGeneratedReference] = useState('')
     const [copyButtonText, setCopyButtonText] = useState(false)
     const [copyListButtonText, setCopyListButtonText] = useState(false)
     const [ascendingOrder, setAscendingOrder] = useState(false)
+    const [fieldErrors, setFieldErrors] = useState<{ url?: string }>({})
+    const [formError, setFormError] = useState('')
 
-    const [generateReferenceList, setGenerateReferenceList] = useState<any>([])
+    const [generateReferenceList, setGenerateReferenceList] = useState<string[]>([])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value
         })
+        setFieldErrors((prev) => ({
+            ...prev,
+            [e.target.name]: undefined,
+        }))
+        setFormError('')
+    }
+
+    const parseApiResponse = async (response: Response) => {
+        const data = await response.json() as ApiSuccessResponse & ApiErrorResponse
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to generate reference')
+        }
+
+        return data
     }
 
     const generateReference = async () => {
         let reference = ''
+        const trimmedUrl = formData.url?.trim() || ''
         setRefLoading(true)
+        setFieldErrors({})
+        setFormError('')
+
+        if ((selectedType === 'website' || selectedType === 'PDF' || selectedType === 'video') && !trimmedUrl) {
+            setFieldErrors({ url: 'URL is required' })
+            setRefLoading(false)
+            return
+        }
 
         try {
             switch (selectedType) {
                 case 'website':
-                    console.log("Sending data to API", formData)
                     const response = await fetch('/api/reference/website', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(formData)
+                        body: JSON.stringify({ url: trimmedUrl })
                     })
-                    const data = await response.json()
+                    const data = await parseApiResponse(response)
 
                     const title = data.title
                     const author = data.author
                     const year = data.year
 
-                    console.log("Received data from API response", data)
-                    reference = `${author}. (${year}). ${title}. [online] Available at: ${formData.url} [Accessed: ${new Date().toLocaleDateString()}.]`
+                    reference = `${author}. (${year}). ${title}. [online] Available at: ${trimmedUrl} [Accessed: ${new Date().toLocaleDateString()}.]`
                     break
 
                 case 'book':
@@ -52,43 +99,48 @@ export const ReferenceGenerator = () => {
                     break
 
                 case 'PDF':
-                    console.log("Sending PDF data to API", formData)
                     const pdfResponse = await fetch('/api/reference/pdf', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ url: formData.url })
+                        body: JSON.stringify({ url: trimmedUrl })
                     })
-                    const pdfData = await pdfResponse.json()
+                    const pdfData = await parseApiResponse(pdfResponse)
 
-                    reference = `${pdfData.author}. (${pdfData.year}). ${pdfData.title} [PDF]. Available at: ${formData.url} [Accessed: ${pdfData.accessDate}]`
+                    reference = `${pdfData.author}. (${pdfData.year}). ${pdfData.title} [PDF]. Available at: ${trimmedUrl} [Accessed: ${pdfData.accessDate}]`
                     break
 
                 case 'video':
-                    console.log("Sending Video data to API", formData)
                     const responseVideo = await fetch('/api/reference/video', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(formData)
+                        body: JSON.stringify({ url: trimmedUrl })
                     })
-                    const dataVideo = await responseVideo.json()
+                    const dataVideo = await parseApiResponse(responseVideo)
 
                     const titleVideo = dataVideo.title
                     const authorVideo = dataVideo.author
                     const yearVideo = dataVideo.year
 
-                    console.log("Received data from API response", dataVideo)
-                    reference = `${authorVideo}. (${yearVideo}). ${titleVideo}. [online] Available at: ${formData.url} [Accessed: ${new Date().toLocaleDateString()}.]`
+                    reference = `${authorVideo}. (${yearVideo}). ${titleVideo}. [online] Available at: ${trimmedUrl} [Accessed: ${new Date().toLocaleDateString()}.]`
                     break
             }
             setGeneratedReference(reference)
         } catch (error) {
-            console.error('Error generating reference:', error)
+            const message = error instanceof Error ? error.message : 'Failed to generate reference'
+
+            if (selectedType === 'website' || selectedType === 'PDF' || selectedType === 'video') {
+                setFieldErrors({ url: message })
+            } else {
+                setFormError(message)
+            }
         } finally {
-            setGenerateReferenceList([...generateReferenceList, reference])
+            if (reference) {
+                setGenerateReferenceList((prev) => [...prev, reference])
+            }
             setRefLoading(false)
         }
     }
@@ -113,6 +165,8 @@ export const ReferenceGenerator = () => {
     const handleAgain = () => {
         setGeneratedReference('')
         setFormData({})
+        setFieldErrors({})
+        setFormError('')
     }
 
     const handleClear = () => {
@@ -144,6 +198,8 @@ export const ReferenceGenerator = () => {
                                 setSelectedType(type)
                                 setFormData({})
                                 setGeneratedReference('')
+                                setFieldErrors({})
+                                setFormError('')
                             }}
                             className={`px-6 py-3 rounded-lg font-semibold capitalize transition-colors cursor-pointer ${selectedType === type
                                 ? 'bg-purple-600 text-white'
@@ -175,6 +231,9 @@ export const ReferenceGenerator = () => {
                                     onChange={handleInputChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
                                 />
+                                {fieldErrors.url && (
+                                    <p className="text-sm text-red-500">{fieldErrors.url}</p>
+                                )}
                             </div>
                         )}
 
@@ -201,6 +260,9 @@ export const ReferenceGenerator = () => {
                                     onChange={handleInputChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
                                 />
+                                {fieldErrors.url && (
+                                    <p className="text-sm text-red-500">{fieldErrors.url}</p>
+                                )}
                             </div>
                         )}
 
@@ -214,7 +276,14 @@ export const ReferenceGenerator = () => {
                                     onChange={handleInputChange}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
                                 />
+                                {fieldErrors.url && (
+                                    <p className="text-sm text-red-500">{fieldErrors.url}</p>
+                                )}
                             </div>
+                        )}
+
+                        {formError && (
+                            <p className="mt-4 text-sm text-red-500">{formError}</p>
                         )}
 
                         <div className="flex gap-4 mt-6">
@@ -258,7 +327,7 @@ export const ReferenceGenerator = () => {
                         <div className="flex justify-between items-center mb-4">
                             <div className='flex flex-col'>
                                 <h2 className="text-lg font-semibold mb-2">All References</h2>
-                                <p className="text-gray-600 text-sm">Don't worry. All your references will stay here until you clear them.</p>
+                                <p className="text-gray-600 text-sm">Don&apos;t worry. All your references will stay here until you clear them.</p>
                             </div>
                             <button
                                 onClick={() => copyToClipboard(generateReferenceList.join('\n'), 'referenceList')}
@@ -295,4 +364,3 @@ export const ReferenceGenerator = () => {
         </section>
     )
 }
-

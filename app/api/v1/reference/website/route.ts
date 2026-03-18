@@ -1,29 +1,70 @@
 import { NextResponse } from "next/server";
 import * as cheerio from 'cheerio';
+import { checkRateLimit } from "@/lib/security/rateLimit";
+import { parseSafeWebsiteUrl } from "@/lib/security/referenceGuards";
+
+const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+        return error.message
+    }
+
+    return 'An unexpected error occurred while fetching website data.'
+}
 
 export async function POST(request: Request) {
     try {
-        const { url } = await request.json();
+        const rateLimit = checkRateLimit(request, {
+            key: 'reference-website',
+            limit: 20,
+            windowMs: 60 * 1000,
+        })
+
+        if (!rateLimit.allowed) {
+            return NextResponse.json({
+                error: 'Too many website reference requests. Please try again shortly.',
+            }, {
+                status: 429,
+                headers: {
+                    'Retry-After': String(rateLimit.retryAfterSeconds),
+                },
+            });
+        }
+
+        const body = await request.json();
+        const url = typeof body?.url === 'string' ? body.url.trim() : ''
 
         if (!url) {
             return NextResponse.json({ error: 'URL is required' }, { status: 400 });
         }
 
+        const safeUrlResult = parseSafeWebsiteUrl(url)
+        if (!safeUrlResult.isValid) {
+            return NextResponse.json({ error: safeUrlResult.error }, { status: 400 });
+        }
+
         // Fetching HTML with your User-Agent to prevent blocking
-        const response = await fetch(url, {
+        const response = await fetch(safeUrlResult.url.toString(), {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
             },
-            next: { revalidate: 3600 } // Optional: cache for 1 hour
+            next: { revalidate: 3600 },
+            signal: AbortSignal.timeout(8000),
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch website: ${response.statusText}`);
+            return NextResponse.json({
+                error: `Failed to fetch website content (${response.status} ${response.statusText})`
+            }, { status: response.status });
         }
 
         const html = await response.text();
+
+        if (!html.trim()) {
+            return NextResponse.json({ error: 'The website returned empty content' }, { status: 422 });
+        }
+
         const $ = cheerio.load(html);
 
         // Helper function to try multiple selectors using Cheerio
@@ -68,8 +109,6 @@ export async function POST(request: Request) {
             }
         }
 
-
-
         // 3. Get Date String
         const dateStr = trySelectors([
             'meta[property="article:published_time"]',
@@ -95,14 +134,13 @@ export async function POST(request: Request) {
             if (yearMatch) year = yearMatch[0];
         }
 
-        console.log('Extracted Data:', { title, author, year });
         return NextResponse.json({ title, author, year });
 
-    } catch (error: any) {
-        console.error('Error fetching data:', error.message);
+    } catch (error: unknown) {
         return NextResponse.json({
-            error: 'Error fetching data',
-            details: error.message
+            error: error instanceof Error && error.name === 'TimeoutError'
+                ? 'Website request timed out. Please try again.'
+                : getErrorMessage(error),
         }, { status: 500 });
     }
 }

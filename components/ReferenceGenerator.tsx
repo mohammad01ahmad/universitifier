@@ -195,7 +195,7 @@ export const ReferenceGenerator = () => {
                         <button
                             key={type}
                             onClick={() => {
-                                setSelectedType(type)
+                                setSelectedType(type as ReferenceType)
                                 setFormData({})
                                 setGeneratedReference('')
                                 setFieldErrors({})

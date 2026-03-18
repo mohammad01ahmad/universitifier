@@ -2,11 +2,11 @@
 
 import { VscReferences, VscWholeWord, } from "react-icons/vsc";
 import { FaBrain } from "react-icons/fa";
-import Header from "@/app/Header/Header.jsx"
+import Header from "@/components/Header.js"
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/app/Database/Firebase"
+import { auth } from "@/lib/Database/Firebase"
 import { useRouter } from "next/navigation";
 import Image from 'next/image';
 

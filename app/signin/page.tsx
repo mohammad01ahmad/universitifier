@@ -4,12 +4,12 @@ import React from 'react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { auth } from '@/app/Database/Firebase'
+import { auth } from '@/lib/Database/Firebase'
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
 import { FcGoogle } from 'react-icons/fc'
 import { GoogleAuthProvider } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { db } from '@/app/Database/Firebase'
+import { db } from '@/lib/Database/Firebase'
 
 function page() {
     const router = useRouter()

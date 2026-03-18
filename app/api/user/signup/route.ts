@@ -1,4 +1,4 @@
-import { adminAuth, adminDb } from "@/app/Database/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/Database/firebaseAdmin";
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 

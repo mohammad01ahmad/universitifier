@@ -3,10 +3,10 @@
 import React, { useState } from 'react'
 import { FcGoogle } from 'react-icons/fc'
 import Link from 'next/link'
-import { validatePasswordWithData } from '@/app/controllers/controllers'
+import { validatePasswordWithData } from '@/controllers/controllers'
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { db, auth } from '@/app/Database/Firebase'
+import { db, auth } from '@/lib/Database/Firebase'
 import { useRouter } from 'next/navigation'
 
 function page() {

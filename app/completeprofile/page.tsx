@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
-import { auth, db } from '@/app/Database/Firebase'
+import { auth, db } from '@/lib/Database/Firebase'
 import { useRouter } from 'next/navigation'
 
 export default function CompleteProfile() {
@@ -42,18 +42,18 @@ export default function CompleteProfile() {
         <p className='text-gray-600 text-center mb-4'>
           Just one more thing - tell us your university!
         </p>
-        
-        <input 
-          type="text" 
+
+        <input
+          type="text"
           placeholder='University Name'
-          name='university' 
+          name='university'
           required
           className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600'
           value={university}
           onChange={(e) => setUniversity(e.target.value)}
         />
-        
-        <button 
+
+        <button
           type="submit"
           disabled={isSubmitting}
           className='px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors mt-2 disabled:opacity-50'

@@ -1,11 +1,11 @@
 "use client"
 
 import { onAuthStateChanged } from 'firebase/auth'
-import { auth, db } from '@/app/Database/Firebase'
+import { auth, db } from '@/lib/Database/Firebase'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
-import { ReferenceGenerator } from '../components/ReferenceGenerator'
+import { ReferenceGenerator } from '../../components/ReferenceGenerator'
 
 function Page() {
   const router = useRouter()

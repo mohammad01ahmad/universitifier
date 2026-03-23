@@ -9,6 +9,7 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/Database/Firebase"
 import { useRouter } from "next/navigation";
 import Image from 'next/image';
+import FloatingNav from '@/components/FloatingNav';
 
 export default function HomePage() {
   const [visibleSections, setVisibleSections] = useState(new Set());
@@ -228,6 +229,8 @@ export default function HomePage() {
           opacity: 0;
         }
       `}</style>
+
+      <FloatingNav />
     </div>
   );
 }

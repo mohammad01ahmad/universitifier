@@ -3,6 +3,8 @@ import React, { useState } from 'react'
 import { FaRegCopy } from "react-icons/fa6";
 import { MdDone } from "react-icons/md";
 import { FaSortAlphaDown } from "react-icons/fa";
+import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 
 type ReferenceType = 'website' | 'book' | 'PDF' | 'video'
 
@@ -192,7 +194,9 @@ export const ReferenceGenerator = () => {
                 {/* Source Type Selector */}
                 <div className="flex gap-2 mb-6 flex-wrap justify-center">
                     {['website', 'book', 'PDF', 'video'].map((type) => (
-                        <button
+                        <Button
+                            variant="outline"
+                            size="lg"
                             key={type}
                             onClick={() => {
                                 setSelectedType(type as ReferenceType)
@@ -201,13 +205,14 @@ export const ReferenceGenerator = () => {
                                 setFieldErrors({})
                                 setFormError('')
                             }}
-                            className={`px-6 py-3 rounded-lg font-semibold capitalize transition-colors cursor-pointer ${selectedType === type
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:border-purple-600'
+                            className={`px-6 py-5 capitalize transition-colors cursor-pointer border-2 ${selectedType === type
+                                ? 'bg-violet-500 text-neutral-50 border-violet-500'
+                                : 'border-gray-300 hover:border-violet-500'
                                 }`}
                         >
                             {type}
-                        </button>
+                        </Button>
+
                     ))}
                 </div>
 

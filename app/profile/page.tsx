@@ -66,10 +66,6 @@ function Page() {
         </div>
       </section>
 
-      <ReferenceGenerator />
-
-
-
       <style jsx>{`
         @keyframes fadeInUp {
           from {

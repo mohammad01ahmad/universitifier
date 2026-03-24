@@ -2,12 +2,12 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const FloatingNav = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isFooterInView, setIsFooterInView] = useState(false);
 
-    const MotionImage = motion(Image);
     const ref = useRef(null);
     const isInView = useInView(ref, { once: true });
 
@@ -71,7 +71,7 @@ const FloatingNav = () => {
                     >
                         <nav className="flex flex-col gap-4">
                             {navItems.map((item) => (
-                                <a key={item.name} className="flex items-center gap-5 group cursor-pointer " href={item.href}>
+                                <Link key={item.name} className="flex items-center gap-5 group cursor-pointer " href={item.href}>
                                     <div className="w-[60px] h-[60px] md:w-[80px] md:h-[80px] bg-neutral-900 rounded-lg md:rounded-xl overflow-hidden relative group">
                                         <motion.div
                                             className="w-full h-full"
@@ -101,10 +101,10 @@ const FloatingNav = () => {
                                                 initial={{ y: "100%" }}
                                                 animate={isInView ? { y: 0 } : { y: "100%" }}
                                                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
-                                                className="text-lg md:text-xl font-semibold text-neutral-100 mb-1.5">{item.name}</motion.span>
+                                            className="text-lg md:text-xl font-semibold text-neutral-100 mb-1.5">{item.name}</motion.span>
                                         </div>
                                     </div>
-                                </a>
+                                </Link>
                             ))}
                         </nav>
                         <div className="pt-4 pb-4">
@@ -121,7 +121,7 @@ const FloatingNav = () => {
                     </div>
 
                     <div className="flex flex-col gap-1.5 md:gap-2 w-[180px] sm:w-[400px] relative">
-                        <a className="md:text-lg font-semibold text-neutral-100 uppercase" href="/">UNIVERSITIFIER</a>
+                        <Link className="md:text-lg font-semibold text-neutral-100 uppercase" href="/">UNIVERSITIFIER</Link>
 
                         <div className="flex items-center h-4 overflow-hidden relative w-full">
                             <div className="absolute left-0 h-full w-8 bg-gradient-to-r from-neutral-900 to-transparent z-10" />

@@ -1,371 +1,379 @@
 'use client'
-import React, { useState } from 'react'
-import { FaRegCopy } from "react-icons/fa6";
-import { MdDone } from "react-icons/md";
-import { FaSortAlphaDown } from "react-icons/fa";
-import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
 
-type ReferenceType = 'website' | 'book' | 'PDF' | 'video'
+import React, { useEffect, useMemo, useState } from 'react'
+import { FaRegCopy } from 'react-icons/fa6'
+import { FaSortAlphaDown } from 'react-icons/fa'
+import { MdDone } from 'react-icons/md'
+
+import { Button } from '@/components/ui/button'
+
+type ReferenceType = 'website' | 'book' | 'video'
 
 type ReferenceFormData = {
-    url?: string
-    author?: string
-    year?: string
-    title?: string
-    edition?: string
-    place?: string
-    publisher?: string
+  url?: string
+  author?: string
+  year?: string
+  title?: string
+  edition?: string
+  place?: string
+  publisher?: string
 }
 
 type ApiSuccessResponse = {
-    title: string
-    author: string
-    year: string
-    accessDate?: string
+  title: string
+  author: string
+  year: string
+  accessDate?: string
 }
 
 type ApiErrorResponse = {
-    error?: string
+  error?: string
 }
 
-export const ReferenceGenerator = () => {
-    const [refLoading, setRefLoading] = useState(false)
-    const [selectedType, setSelectedType] = useState<ReferenceType>('website')
-    const [formData, setFormData] = useState<ReferenceFormData>({})
-    const [generatedReference, setGeneratedReference] = useState('')
-    const [copyButtonText, setCopyButtonText] = useState(false)
-    const [copyListButtonText, setCopyListButtonText] = useState(false)
-    const [ascendingOrder, setAscendingOrder] = useState(false)
-    const [fieldErrors, setFieldErrors] = useState<{ url?: string }>({})
-    const [formError, setFormError] = useState('')
+type ReferenceGeneratorProps = {
+  embedded?: boolean
+  title?: string
+  description?: string
+  references?: string[]
+  onAddReference?: (reference: string) => void
+}
 
-    const [generateReferenceList, setGenerateReferenceList] = useState<string[]>([])
+const sourceTypes: ReferenceType[] = ['website', 'book', 'video']
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        })
-        setFieldErrors((prev) => ({
-            ...prev,
-            [e.target.name]: undefined,
-        }))
-        setFormError('')
+export const ReferenceGenerator = ({
+  embedded = false,
+  title = 'Harvard Reference Generator',
+  description = 'Generate accurate Harvard-style references instantly.',
+  references,
+  onAddReference,
+}: ReferenceGeneratorProps) => {
+  const [refLoading, setRefLoading] = useState(false)
+  const [selectedType, setSelectedType] = useState<ReferenceType>('website')
+  const [formData, setFormData] = useState<ReferenceFormData>({})
+  const [generatedReference, setGeneratedReference] = useState('')
+  const [copyButtonText, setCopyButtonText] = useState(false)
+  const [copyListButtonText, setCopyListButtonText] = useState(false)
+  const [ascendingOrder, setAscendingOrder] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ url?: string }>({})
+  const [formError, setFormError] = useState('')
+  const [generateReferenceList, setGenerateReferenceList] = useState<string[]>(references ?? [])
+
+  useEffect(() => {
+    if (references) {
+      setGenerateReferenceList(references)
+    }
+  }, [references])
+
+  const sectionClassName = useMemo(
+    () =>
+      embedded
+        ? 'space-y-5'
+        : 'py-20 px-6 bg-gray-50',
+    [embedded]
+  )
+
+  const containerClassName = useMemo(
+    () =>
+      embedded
+        ? 'space-y-5'
+        : 'max-w-4xl mx-auto',
+    [embedded]
+  )
+
+  const parseApiResponse = async (response: Response) => {
+    const data = (await response.json()) as ApiSuccessResponse & ApiErrorResponse
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to generate reference')
     }
 
-    const parseApiResponse = async (response: Response) => {
-        const data = await response.json() as ApiSuccessResponse & ApiErrorResponse
+    return data
+  }
 
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to generate reference')
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [event.target.name]: event.target.value,
+    })
+    setFieldErrors((prev) => ({
+      ...prev,
+      [event.target.name]: undefined,
+    }))
+    setFormError('')
+  }
+
+  const pushReference = (reference: string) => {
+    const nextReferences = [...generateReferenceList, reference]
+    setGenerateReferenceList(nextReferences)
+    onAddReference?.(reference)
+  }
+
+  const generateReference = async () => {
+    let reference = ''
+    const trimmedUrl = formData.url?.trim() || ''
+    setRefLoading(true)
+    setFieldErrors({})
+    setFormError('')
+
+    if ((selectedType === 'website' || selectedType === 'video') && !trimmedUrl) {
+      setFieldErrors({ url: 'URL is required' })
+      setRefLoading(false)
+      return
+    }
+
+    try {
+      switch (selectedType) {
+        case 'website': {
+          const response = await fetch('/api/v1/reference/website', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: trimmedUrl }),
+          })
+          const data = await parseApiResponse(response)
+          reference = `${data.author}. (${data.year}). ${data.title}. [online] Available at: ${trimmedUrl} [Accessed: ${new Date().toLocaleDateString()}.]`
+          break
         }
-
-        return data
-    }
-
-    const generateReference = async () => {
-        let reference = ''
-        const trimmedUrl = formData.url?.trim() || ''
-        setRefLoading(true)
-        setFieldErrors({})
-        setFormError('')
-
-        if ((selectedType === 'website' || selectedType === 'PDF' || selectedType === 'video') && !trimmedUrl) {
-            setFieldErrors({ url: 'URL is required' })
-            setRefLoading(false)
-            return
+        case 'book':
+          reference = `${formData.author || 'Author'} (${formData.year || 'Year'}) ${formData.title || 'Title'}. ${formData.edition ? `${formData.edition}. ` : ''}${formData.place || 'Place'}: ${formData.publisher || 'Publisher'}.`
+          break
+        case 'video': {
+          const response = await fetch('/api/v1/reference/video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: trimmedUrl }),
+          })
+          const data = await parseApiResponse(response)
+          reference = `${data.author}. (${data.year}). ${data.title}. [online] Available at: ${trimmedUrl} [Accessed: ${new Date().toLocaleDateString()}.]`
+          break
         }
+      }
 
-        try {
-            switch (selectedType) {
-                case 'website':
-                    const response = await fetch('/api/reference/website', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ url: trimmedUrl })
-                    })
-                    const data = await parseApiResponse(response)
+      setGeneratedReference(reference)
+      pushReference(reference)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate reference'
+      if (selectedType === 'website' || selectedType === 'video') {
+        setFieldErrors({ url: message })
+      } else {
+        setFormError(message)
+      }
+    } finally {
+      setRefLoading(false)
+    }
+  }
 
-                    const title = data.title
-                    const author = data.author
-                    const year = data.year
+  const copyToClipboard = async (text: string, name: 'reference' | 'referenceList') => {
+    await navigator.clipboard.writeText(text)
 
-                    reference = `${author}. (${year}). ${title}. [online] Available at: ${trimmedUrl} [Accessed: ${new Date().toLocaleDateString()}.]`
-                    break
-
-                case 'book':
-                    reference = `${formData.author || 'Author'} (${formData.year || 'Year'}) ${formData.title || 'Title'}. ${formData.edition ? formData.edition + '. ' : ''}${formData.place || 'Place'}: ${formData.publisher || 'Publisher'}.`
-                    break
-
-                case 'PDF':
-                    const pdfResponse = await fetch('/api/reference/pdf', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ url: trimmedUrl })
-                    })
-                    const pdfData = await parseApiResponse(pdfResponse)
-
-                    reference = `${pdfData.author}. (${pdfData.year}). ${pdfData.title} [PDF]. Available at: ${trimmedUrl} [Accessed: ${pdfData.accessDate}]`
-                    break
-
-                case 'video':
-                    const responseVideo = await fetch('/api/reference/video', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ url: trimmedUrl })
-                    })
-                    const dataVideo = await parseApiResponse(responseVideo)
-
-                    const titleVideo = dataVideo.title
-                    const authorVideo = dataVideo.author
-                    const yearVideo = dataVideo.year
-
-                    reference = `${authorVideo}. (${yearVideo}). ${titleVideo}. [online] Available at: ${trimmedUrl} [Accessed: ${new Date().toLocaleDateString()}.]`
-                    break
-            }
-            setGeneratedReference(reference)
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to generate reference'
-
-            if (selectedType === 'website' || selectedType === 'PDF' || selectedType === 'video') {
-                setFieldErrors({ url: message })
-            } else {
-                setFormError(message)
-            }
-        } finally {
-            if (reference) {
-                setGenerateReferenceList((prev) => [...prev, reference])
-            }
-            setRefLoading(false)
-        }
+    if (name === 'reference') {
+      setCopyButtonText(true)
+      window.setTimeout(() => setCopyButtonText(false), 3000)
+      return
     }
 
-    const copyToClipboard = (text: string, name: string) => {
-        navigator.clipboard.writeText(text)
+    setCopyListButtonText(true)
+    window.setTimeout(() => setCopyListButtonText(false), 3000)
+  }
 
-        if (name === 'reference') {
-            setCopyButtonText(true)
-            setTimeout(() => {
-                setCopyButtonText(false)
-            }, 3000)
-        }
-        if (name === 'referenceList') {
-            setCopyListButtonText(true)
-            setTimeout(() => {
-                setCopyListButtonText(false)
-            }, 3000)
-        }
-    }
+  const handleAgain = () => {
+    setGeneratedReference('')
+    setFormData({})
+    setFieldErrors({})
+    setFormError('')
+  }
 
-    const handleAgain = () => {
-        setGeneratedReference('')
-        setFormData({})
-        setFieldErrors({})
-        setFormError('')
-    }
+  const handleClear = () => {
+    setGenerateReferenceList([])
+  }
 
-    const handleClear = () => {
-        setGenerateReferenceList([])
-    }
+  const handleAscendingOrder = () => {
+    setGenerateReferenceList((current) => [...current].sort((a, b) => a.localeCompare(b)))
+    setAscendingOrder(true)
+    window.setTimeout(() => setAscendingOrder(false), 3000)
+  }
 
-    const handleAscendingOrder = () => {
-        setGenerateReferenceList([...generateReferenceList].sort((a, b) => a.localeCompare(b)))
+  return (
+    <section className={sectionClassName}>
+      <div className={containerClassName}>
+        <div>
+          <h2 className={`${embedded ? 'text-xl' : 'text-4xl text-center'} font-bold`}>{title}</h2>
+          <p className={`${embedded ? 'mt-2 text-sm leading-6 text-slate-500' : 'text-gray-600 text-center mt-4 mb-8'}`}>
+            {description}
+            {!embedded ? (
+              <>
+                <br />
+                Authors are not able to be extracted from ScienceDirect.com currently.
+              </>
+            ) : null}
+          </p>
+        </div>
 
-        // Put ascending order for 3000ms
-        setTimeout(() => {
-            setAscendingOrder(true)
-        }, 3000)
-        setAscendingOrder(false)
-    }
+        <div className={`flex gap-2 flex-wrap ${embedded ? '' : 'justify-center mb-6'}`}>
+          {sourceTypes.map((type) => (
+            <Button
+              variant="outline"
+              size={embedded ? 'sm' : 'lg'}
+              key={type}
+              onClick={() => {
+                setSelectedType(type)
+                setFormData({})
+                setGeneratedReference('')
+                setFieldErrors({})
+                setFormError('')
+              }}
+              className={`capitalize border-2 ${selectedType === type ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-300 hover:border-emerald-500'}`}
+            >
+              {type}
+            </Button>
+          ))}
+        </div>
 
-    return (
-        <section className="py-20 px-6 bg-gray-50">
-            <div className="max-w-4xl mx-auto">
-                <h2 className="text-4xl font-bold mb-4 text-center">Harvard Reference Generator</h2>
-                <p className="text-gray-600 text-center mb-8">Generate accurate Harvard-style references instantly. <br />Authors are not able to be extracted from ScienceDirect.com currently.</p>
+        {!generatedReference ? (
+          <div className={`relative rounded-[1.4rem] border border-gray-200 bg-white ${embedded ? 'p-0 shadow-none border-none' : 'mb-6 p-8 shadow-sm'} ${refLoading ? 'pointer-events-none' : ''}`}>
+            {refLoading ? (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[1.4rem] bg-white/75 backdrop-blur-sm">
+                <div className="text-sm font-semibold text-emerald-700">Generating reference...</div>
+              </div>
+            ) : null}
 
-                {/* Source Type Selector */}
-                <div className="flex gap-2 mb-6 flex-wrap justify-center">
-                    {['website', 'book', 'PDF', 'video'].map((type) => (
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            key={type}
-                            onClick={() => {
-                                setSelectedType(type as ReferenceType)
-                                setFormData({})
-                                setGeneratedReference('')
-                                setFieldErrors({})
-                                setFormError('')
-                            }}
-                            className={`px-6 py-5 capitalize transition-colors cursor-pointer border-2 ${selectedType === type
-                                ? 'bg-violet-500 text-neutral-50 border-violet-500'
-                                : 'border-gray-300 hover:border-violet-500'
-                                }`}
-                        >
-                            {type}
-                        </Button>
+            {selectedType === 'website' || selectedType === 'video' ? (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  name="url"
+                  placeholder={
+                    selectedType === 'website'
+                      ? 'Paste a Website URL'
+                      : 'Paste a YouTube URL'
+                  }
+                  value={formData.url || ''}
+                  onChange={handleInputChange}
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                />
+                {fieldErrors.url ? <p className="text-sm text-red-500">{fieldErrors.url}</p> : null}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="text"
+                  name="author"
+                  placeholder="Author"
+                  value={formData.author || ''}
+                  onChange={handleInputChange}
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                />
+                <input
+                  type="text"
+                  name="year"
+                  placeholder="Year"
+                  value={formData.year || ''}
+                  onChange={handleInputChange}
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                />
+                <input
+                  type="text"
+                  name="title"
+                  placeholder="Book title"
+                  value={formData.title || ''}
+                  onChange={handleInputChange}
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 sm:col-span-2"
+                />
+                <input
+                  type="text"
+                  name="edition"
+                  placeholder="Edition"
+                  value={formData.edition || ''}
+                  onChange={handleInputChange}
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                />
+                <input
+                  type="text"
+                  name="place"
+                  placeholder="Place"
+                  value={formData.place || ''}
+                  onChange={handleInputChange}
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500"
+                />
+                <input
+                  type="text"
+                  name="publisher"
+                  placeholder="Publisher"
+                  value={formData.publisher || ''}
+                  onChange={handleInputChange}
+                  className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-500 sm:col-span-2"
+                />
+              </div>
+            )}
 
-                    ))}
-                </div>
+            {formError ? <p className="mt-4 text-sm text-red-500">{formError}</p> : null}
 
-                {/* Form or Generated Reference */}
-                {/* Form - Always show when no current reference is being displayed */}
-                {!generatedReference && (
-                    <div className={`bg-white p-8 rounded-lg shadow-sm border border-gray-200 mb-6 relative ${refLoading ? 'pointer-events-none' : ''}`}>
-                        {refLoading && (
-                            <div className="backdrop-blur-md absolute inset-0 flex items-center justify-center bg-white/50 rounded-lg z-10">
-                                <div className="text-xl font-semibold text-purple-600">Loading...</div>
-                            </div>
-                        )}
-
-                        {selectedType === 'website' && (
-                            <div className="space-y-4">
-                                <input
-                                    type="text"
-                                    name="url"
-                                    placeholder="Paste a Website URL (e.g. https://example.com)"
-                                    value={formData.url || ''}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                                />
-                                {fieldErrors.url && (
-                                    <p className="text-sm text-red-500">{fieldErrors.url}</p>
-                                )}
-                            </div>
-                        )}
-
-                        {selectedType === 'book' && (
-                            <div className="space-y-4">
-                                <input
-                                    type="text"
-                                    name="url"
-                                    placeholder="Paste a Book URL (e.g. https://example.com/book.pdf)"
-                                    value={formData.url || ''}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                                />
-                            </div>
-                        )}
-
-                        {selectedType === 'PDF' && (
-                            <div className="space-y-4">
-                                <input
-                                    type="text"
-                                    name="url"
-                                    placeholder="Paste a PDF URL (e.g. https://example.com/paper.pdf)"
-                                    value={formData.url || ''}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                                />
-                                {fieldErrors.url && (
-                                    <p className="text-sm text-red-500">{fieldErrors.url}</p>
-                                )}
-                            </div>
-                        )}
-
-                        {selectedType === 'video' && (
-                            <div className="space-y-4">
-                                <input
-                                    type="text"
-                                    name="url"
-                                    placeholder="Paste a Video URL (e.g. https://youtube.com/watch?v=...)"
-                                    value={formData.url || ''}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
-                                />
-                                {fieldErrors.url && (
-                                    <p className="text-sm text-red-500">{fieldErrors.url}</p>
-                                )}
-                            </div>
-                        )}
-
-                        {formError && (
-                            <p className="mt-4 text-sm text-red-500">{formError}</p>
-                        )}
-
-                        <div className="flex gap-4 mt-6">
-                            <button
-                                onClick={generateReference}
-                                disabled={refLoading}
-                                className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold disabled:opacity-50 cursor-pointer"
-                            >
-                                Generate Reference
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Current Generated Reference */}
-                {generatedReference && (
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <button
-                                onClick={handleAgain}
-                                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-                            >
-                                Again
-                            </button>
-                            <button
-                                onClick={() => copyToClipboard(generatedReference, 'reference')}
-                                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold cursor-pointer"
-                            >
-                                {copyButtonText ? <MdDone className="w-5 h-6 transition-all duration-300" /> : <FaRegCopy className="w-5 h-6" />}
-                            </button>
-                        </div>
-                        <p className="text-gray-800 leading-relaxed border-l-4 border-purple-600 pl-4 py-2 bg-purple-50 rounded-sm">
-                            {generatedReference}
-                        </p>
-                    </div>
-                )}
-
-                {/* References List - Always visible when there are references */}
-                {generateReferenceList.length > 0 && (
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className='flex flex-col'>
-                                <h2 className="text-lg font-semibold mb-2">All References</h2>
-                                <p className="text-gray-600 text-sm">Don&apos;t worry. All your references will stay here until you clear them.</p>
-                            </div>
-                            <button
-                                onClick={() => copyToClipboard(generateReferenceList.join('\n'), 'referenceList')}
-                                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold cursor-pointer"
-                            >
-                                {copyListButtonText ? <MdDone className="w-5 h-6 transition-all duration-300" /> : <FaRegCopy className="w-5 h-6" />}
-                            </button>
-                        </div>
-                        <ul className="pl-4 pt-2 pb-2 bg-purple-50 rounded-sm">
-                            {generateReferenceList.map((references: string, index: number) => (
-                                <li key={index} className="flex items-center justify-between pt-4 pb-2">
-                                    <span className="text-gray-800">{index + 1}. {references}</span>
-                                </li>
-                            ))}
-                        </ul>
-
-                        <div className="flex justify-between items-center mt-4">
-                            <button
-                                onClick={handleClear}
-                                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold cursor-pointer"
-                            >
-                                Clear
-                            </button>
-                            <button
-                                onClick={handleAscendingOrder}
-                                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold cursor-pointer"
-                            >
-                                {ascendingOrder ? <FaSortAlphaDown className="w-5 h-6 transition-all duration-300" /> : <MdDone className="w-5 h-6" />}
-                            </button>
-                        </div>
-                    </div>
-                )}
+            <div className={`${embedded ? 'mt-4' : 'mt-6'} flex gap-3`}>
+              <Button
+                onClick={generateReference}
+                disabled={refLoading}
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Generate Reference
+              </Button>
             </div>
-        </section>
-    )
+          </div>
+        ) : (
+          <div className="rounded-[1.4rem] border border-gray-200 bg-white p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <Button variant="outline" onClick={handleAgain}>
+                Again
+              </Button>
+              <Button
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => void copyToClipboard(generatedReference, 'reference')}
+              >
+                {copyButtonText ? <MdDone className="h-5 w-5" /> : <FaRegCopy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="rounded-2xl border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3 text-sm leading-6 text-slate-700">
+              {generatedReference}
+            </p>
+          </div>
+        )}
+
+        {generateReferenceList.length > 0 ? (
+          <div className="rounded-[1.4rem] border border-gray-200 bg-white p-4">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-slate-950">Saved references</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  These references stay attached to the assignment until you remove them.
+                </p>
+              </div>
+              <Button
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => void copyToClipboard(generateReferenceList.join('\n'), 'referenceList')}
+              >
+                {copyListButtonText ? <MdDone className="h-5 w-5" /> : <FaRegCopy className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            <ul className="space-y-2 rounded-2xl bg-slate-50 p-3">
+              {generateReferenceList.map((reference, index) => (
+                <li key={`${reference}-${index}`} className="text-sm leading-6 text-slate-700">
+                  {index + 1}. {reference}
+                </li>
+              ))}
+            </ul>
+
+            {!embedded ? (
+              <div className="mt-4 flex items-center justify-between">
+                <Button variant="outline" onClick={handleClear}>
+                  Clear
+                </Button>
+                <Button variant="outline" onClick={handleAscendingOrder}>
+                  {ascendingOrder ? <MdDone className="h-5 w-5" /> : <FaSortAlphaDown className="h-4 w-4" />}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
 }

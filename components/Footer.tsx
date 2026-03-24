@@ -1,6 +1,15 @@
+'use client'
+
 import React from 'react'
+import { usePathname } from 'next/navigation'
 
 function Footer() {
+  const pathname = usePathname()
+
+  if (pathname.startsWith('/profile')) {
+    return null
+  }
+
   return (
     <footer className="bg-black text-white py-12 px-6">
       <div className="max-w-6xl mx-auto">

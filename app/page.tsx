@@ -2,34 +2,20 @@
 
 import { VscReferences, VscWholeWord, } from "react-icons/vsc";
 import { FaBrain } from "react-icons/fa";
-import Header from "@/components/Header.js"
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/Database/Firebase"
 import { useRouter } from "next/navigation";
 import Image from 'next/image';
 import FloatingNav from '@/components/FloatingNav';
+import Footer from '@/components/Footer';
+import Header from '@/components/Header';
 
 export default function HomePage() {
   const [visibleSections, setVisibleSections] = useState(new Set());
 
   const router = useRouter();
-
-  // redirect to profile if user is logged in
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log("User is logged in", user);
-        router.push('/profile')
-      } else {
-        console.log("User is signed out");
-      }
-    })
-
-    return () => unsubscribe()
-  }, [router])
-
 
   // for the animation effect for all components
   useEffect(() => {
@@ -54,7 +40,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white text-black font-['Inter']">
       {/* Header */}
-      {/* In the layout.tsx */}
+      <Header />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6 min-h-screen flex items-center">
@@ -202,6 +188,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
+      <Footer />
 
       <style jsx>{`
         @keyframes fadeInUp {

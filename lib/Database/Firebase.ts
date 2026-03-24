@@ -1,8 +1,7 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -12,11 +11,10 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Singleton pattern: Initialize Firebase only if it hasn't been initialized yet
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Services
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-export { auth, db, GoogleAuthProvider, getAuth, signInWithPopup, signOut };
+export { auth, db, GoogleAuthProvider, signInWithPopup, signOut };

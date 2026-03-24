@@ -9,7 +9,7 @@ import { signOut } from 'firebase/auth'
 function Header() {
   const pathName = usePathname()
   const router = useRouter()
-  const isProfilePage = pathName === '/profile'
+  const isWorkspaceArea = pathName.startsWith('/profile')
 
   const handleLogout = async () => {
     try {
@@ -27,11 +27,16 @@ function Header() {
           <div className="text-2xl font-bold text-black cursor-pointer">Universitifier</div>
         </Link>
 
-        {isProfilePage ? (
+        {isWorkspaceArea ? (
           <div className="flex items-center gap-4">
+            <Link href="/profile">
+              <button className="px-4 py-2 text-gray-700 hover:text-emerald-600 transition-colors cursor-pointer">
+                Dashboard
+              </button>
+            </Link>
             <button
               onClick={handleLogout}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer"
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors cursor-pointer"
             >
               Logout
             </button>
@@ -39,12 +44,12 @@ function Header() {
         ) : (
           <div className="flex items-center gap-4">
             <Link href="/signin">
-              <button className="px-4 py-2 text-gray-700 hover:text-purple-600 transition-colors cursor-pointer">
+              <button className="px-4 py-2 text-gray-700 hover:text-emerald-600 transition-colors cursor-pointer">
                 Sign In
               </button>
             </Link>
             <Link href="/signup">
-              <button className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors cursor-pointer">
+              <button className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors cursor-pointer">
                 Get Started
               </button>
             </Link>

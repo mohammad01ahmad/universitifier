@@ -1,162 +1,31 @@
 "use client"
 
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { FcGoogle } from 'react-icons/fc'
 import Link from 'next/link'
-import { validatePassword, validateForm } from '@/controllers/formValidation'
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { db, auth, GoogleAuthProvider, signInWithPopup } from '@/lib/Database/Firebase'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { db, auth } from '@/lib/Database/Firebase'
 import { useRouter } from 'next/navigation'
 import { FirebaseError } from 'firebase/app'
-
-type FieldErrors = Partial<Record<'name' | 'email' | 'university' | 'password', string[]>>
+import { Button } from "@/components/ui/button"
 
 function Page() {
   const router = useRouter()
-
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    university: '',
-    password: '',
-  })
-
   const provider = new GoogleAuthProvider();
 
-  // const [visiblePassword, setVisiblePassword] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target || !e.target.name) {
-      console.warn('Invalid input event', e)
-      return
-    }
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-    setFieldErrors((prev) => ({
-      ...prev,
-      [e.target.name]: undefined,
-    }))
-    setFormError('')
-  }
-
-  // Password Change Handler (UI Only)
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // FIX: Update formData FIRST, then validate
-    const newPassword = e.target.value
-
-    setFormData({
-      ...formData,
-      password: newPassword,
-    })
-    setFormError('')
-
-    // Now validate with the new password value
-    const passwordValidation = validatePassword(newPassword)
-
-    if (passwordValidation.isValid) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        password: undefined,
-      }))
-    } else {
-      setFieldErrors((prev) => ({
-        ...prev,
-        password: passwordValidation.fieldErrors.password,
-      }))
-    }
-  }
-
-  // Normal submition 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    const validation = validateForm(formData)
-    if (!validation.isValid) {
-      setFieldErrors(validation.fieldErrors)
-      setFormError('')
-      setIsSubmitting(false)
-      return
-    }
-    setFieldErrors({})
-    setFormError('')
-
-    try {
-      // 1. Create user in Firebase Auth (Client SDK)
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      )
-
-      // 2. Save additional data to Firestore (Client SDK)
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
-        name: formData.name,
-        email: formData.email,
-        universityName: formData.university,
-        profileCompleted: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      })
-
-      // 3. User is automatically signed in
-      router.push('/profile')
-
-      setSuccess(true)
-      setIsSubmitting(false)
-      setTimeout(() => {
-        setSuccess(false)
-      }, 3000)
-
-      setFormData({
-        name: '',
-        email: '',
-        university: '',
-        password: '',
-      });
-      setFieldErrors({})
-    } catch (error) {
-      setIsSubmitting(false)
-
-      if (error instanceof FirebaseError && error.code === 'auth/email-already-in-use') {
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: ['Email is already in use'],
-        }))
-      } else if (error instanceof FirebaseError && error.code === 'auth/invalid-email') {
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: ['Invalid email address'],
-        }))
-      } else if (error instanceof FirebaseError && error.code === 'auth/weak-password') {
-        setFieldErrors((prev) => ({
-          ...prev,
-          password: ['Password is too weak'],
-        }))
-      } else {
-        setFormError('An error occurred. Please try again.')
-      }
-    };
-  };
+  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState('');
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      // console.log('User signed in with Google', user);
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
 
       // Check if user exists in firebase
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
-      // Does not exist
       if (!userDoc.exists()) {
         await setDoc(userDocRef, {
           name: user.displayName,
@@ -166,7 +35,20 @@ function Page() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         });
-        router.push('/complete-profile'); // redirect to complete-profile for university data
+
+        const idToken = await userCredential.user.getIdToken();
+
+        // Send this token to your API route to create a cookie
+        const res = await fetch('/api/v1/user/login', {
+          method: 'POST',
+          body: JSON.stringify({ idToken })
+        });
+
+        if (!res.ok) {
+          setFormError('Failed to create session cookie');
+        }
+
+        router.push('/complete-profile');
 
       } else {
         // Exists
@@ -176,7 +58,6 @@ function Page() {
         }
         router.push('/profile'); // redirect to profile
       }
-      setIsSubmitting(false)
 
     } catch (error) {
       // console.error('Error signing in with Google:', error);
@@ -189,113 +70,72 @@ function Page() {
   };
 
   return (
-    <div className='bg-white min-h-screen w-full flex items-center justify-center pt-20 pb-12'>
-      <form onSubmit={handleSubmit} className='flex flex-col gap-4 w-full max-w-md p-8 border border-gray-200 rounded-lg'>
-        <h1 className='text-3xl font-bold text-center mb-4 text-black'>Sign Up</h1>
-
-        <div>
-          <input
-            type="text"
-            placeholder='Name'
-            name='name'
-            required
-            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
-            value={formData.name}
-            onChange={handleChange}
-          />
-          {fieldErrors.name?.map((error) => (
-            <p key={error} className='mt-1 text-sm text-red-500'>{error}</p>
-          ))}
+    <div className="container relative h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+      {/* Left Side: Branding/Quote */}
+      <div className="relative hidden h-full flex-col bg-muted pl-10 pt-5 text-white dark:border-r lg:flex">
+        <div className="absolute inset-0 bg-zinc-900" />
+        <div className="relative z-20 flex items-center text-lg font-medium">
+          Universitifier
         </div>
+      </div>
 
-        <div>
-          <input
-            type="email"
-            placeholder='Email'
-            name='email'
-            required
-            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
-            value={formData.email}
-            onChange={handleChange}
-          />
-          {fieldErrors.email?.map((error) => (
-            <p key={error} className='mt-1 text-sm text-red-500'>{error}</p>
-          ))}
-        </div>
-
-        <div>
-          <input
-            type="text"
-            placeholder='University Name'
-            name='university'
-            required
-            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
-            value={formData.university}
-            onChange={handleChange}
-          />
-          {fieldErrors.university?.map((error) => (
-            <p key={error} className='mt-1 text-sm text-red-500'>{error}</p>
-          ))}
-        </div>
-
-        <div>
-          <input
-            type="password"
-            placeholder='Password'
-            name='password'
-            required
-            className='px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600 w-full'
-            value={formData.password}
-            onChange={handlePasswordChange}
-          />
-          {fieldErrors.password?.map((error) => (
-            <p key={error} className='mt-2 text-sm text-red-500'>{error}</p>
-          ))}
-        </div>
-
-        {success && (
-          <div className='text-green-600 text-sm font-semibold text-center bg-green-50 p-3 rounded-lg border border-green-200'>
-            ✓ Account created successfully!
-          </div>
-        )}
-
-        {formError && (
-          <div className='text-red-500 text-sm text-center'>
-            <p>{formError}</p>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className='px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors mt-2'
-        >
-          {success ? 'Success' : isSubmitting ? 'Signing Up...' : 'Sign Up'}
-        </button>
-
-        <div className='flex items-center gap-3 my-2'>
-          <div className='flex-1 h-px bg-gray-300'></div>
-          <span className='text-gray-500 text-sm'>OR</span>
-          <div className='flex-1 h-px bg-gray-300'></div>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={isSubmitting}
-          className='px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2'
-        >
-          <FcGoogle className='text-xl' />
-          <span>Continue with Google</span>
-        </button>
-
-        <p className='text-center text-gray-600 mt-4'>
-          Already have an account?{' '}
-          <Link href="/signin" className='text-purple-600 hover:text-purple-700 font-semibold'>
-            Sign In
+      {/* Right Side: Sign Up Form */}
+      <div className="lg:p-8 bg-black h-full flex items-center">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+          <Link
+            href="/login"
+            className="absolute right-4 top-4 md:right-8 md:top-8 text-sm font-medium text-white hover:underline"
+          >
+            Login
           </Link>
-        </p>
-      </form>
+          <div className="flex flex-col space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight text-white">
+              Create an account
+            </h1>
+            <p className="text-sm text-zinc-400">
+              Create your account using Google
+            </p>
+          </div>
+
+          <div className="grid gap-6 justify-center ">
+            <div className="relative">
+              <Button
+                variant="outline"
+                type="button"
+                disabled={isLoading}
+                onClick={handleGoogleSignIn}
+                className="border-zinc-800 bg-transparent py-5 px-20 text-white"
+              >
+                <FcGoogle className="mr-2 h-8 w-8" />
+                Google
+              </Button>
+            </div>
+
+            {/* Error message */}
+            {formError && (
+              <div className="text-red-500 text-center">{formError}</div>
+            )}
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-zinc-800" />
+            </div>
+          </div>
+
+          <p className="px-8 text-center text-sm text-zinc-400">
+            By clicking continue, you agree to our{" "}
+            <Link href="/terms" className="underline underline-offset-4 hover:text-white">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline underline-offset-4 hover:text-white">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

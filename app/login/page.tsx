@@ -1,17 +1,18 @@
 'use client'
 
-import React from 'react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { auth } from '@/lib/Database/Firebase'
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { FcGoogle } from 'react-icons/fc'
-import { GoogleAuthProvider } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/Database/Firebase'
 import { FirebaseError } from 'firebase/app'
 import { Button } from "@/components/ui/button"
+import { setCsrfToken } from '@/lib/security/csrfProtection'
+
+// TO DO: Check if data is in firestore is updated before or after API call. OR inside the API call.
 
 function Page() {
     const router = useRouter()
@@ -20,50 +21,48 @@ function Page() {
     const [formError, setFormError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [email, setEmail] = useState('');
+    const [csrfToken, setCsrfTokenState] = useState<string>('');
+
+    // csrfProtection
+    useEffect(() => {
+        const initCsrf = async () => {
+            const token = await setCsrfToken();
+            setCsrfTokenState(token);
+        };
+        initCsrf();
+    }, []);
 
     const handleGoogleSignIn = async () => {
         try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
+            const idToken = await user.getIdToken();
 
-            const res = await fetch('/api/v1/user/signup', {
+            const res = await fetch('/api/v1/user/login', {
                 method: 'POST',
-                body: JSON.stringify({ idToken: user.getIdToken() }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken, // Must match what validateCsrf expects
+                },
+                body: JSON.stringify({ idToken }),
             });
 
             if (!res.ok) {
-                setFormError('Failed to create session cookie');
+                setFormError('Failed to create session');
+                return Response.json({ error: "Failed to create session" }, { status: 401 });
             }
 
-            // Check if user exists in firebase
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            // Does not exist
-            if (!userDoc.exists()) {
-                await setDoc(userDocRef, {
-                    name: user.displayName,
-                    email: user.email,
-                    university: null,
-                    profileCompleted: false,
-                });
-                router.push('/complete-profile'); // redirect to complete-profile for university data
-
-            } else {
-                // Exists
-                const userData = userDoc.data()
-                if (!userData.university || !userData.profileCompleted) {
-                    router.push('/complete-profile'); // redirect to complete-profile for university data
-                }
-                router.push('/profile'); // redirect to profile
-            }
+            const data = await res.json();
+            router.push(data.redirectTo);
 
         } catch (error) {
             console.error('Error signing in with Google:', error);
             if (error instanceof FirebaseError && error.code === 'auth/popup-closed-by-user') {
                 setFormError('Sign-in cancelled')
+                return Response.json({ error: "Sign-in cancelled" }, { status: 401 });
             } else {
                 setFormError('Failed to sign in with Google. Please try again.')
+                return Response.json({ error: "Failed to sign in with Google. Please try again." }, { status: 401 });
             }
         }
     };
@@ -81,18 +80,12 @@ function Page() {
             {/* Right Side: Sign Up Form */}
             <div className="lg:p-8 bg-black h-full flex items-center">
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-                    <Link
-                        href="/signup"
-                        className="absolute right-4 top-4 md:right-8 md:top-8 text-sm font-medium text-white hover:underline"
-                    >
-                        Sign Up
-                    </Link>
                     <div className="flex flex-col space-y-2 text-center">
                         <h1 className="text-2xl font-semibold tracking-tight text-white">
                             Login to your account
                         </h1>
                         <p className="text-sm text-zinc-400">
-                            Login to your account using Google
+                            Login using Google
                         </p>
                     </div>
 
@@ -112,7 +105,7 @@ function Page() {
 
                         {/* Error message */}
                         {formError && (
-                            <div className="text-red-500 text-center">{formError}</div>
+                            <div className="text-red-500 text-center animate-pulse">{formError}</div>
                         )}
                     </div>
 

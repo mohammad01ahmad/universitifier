@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Geist } from "next/font/google";
 import "./globals.css";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
 import { cn } from "@/lib/utils";
+import { AuthProvider } from "@/lib/authContext";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -25,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className={inter.variable} style={{ fontFamily: 'var(--font-inter)' }}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

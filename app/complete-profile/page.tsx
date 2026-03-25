@@ -17,7 +17,7 @@ export default function CompleteProfile() {
     try {
       const user = auth.currentUser
       if (!user) {
-        router.push('/signin')
+        router.replace('/login')
         return
       }
 

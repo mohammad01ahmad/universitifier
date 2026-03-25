@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, CalendarClock, FilePenLine, FolderOpen, Sparkles, Target, } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal'
-import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 import { createAssignment, fetchAssignmentsForUser } from '@/lib/assignments/firestore'
 import { parseAssignmentWithGemini } from '@/lib/assignments/parser'
 import type { Assignment, AssignmentUpload } from '@/lib/assignments/types'
+import { useAuth } from '@/lib/authContext'
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('en', {
@@ -23,18 +24,22 @@ const daysUntil = (value: string) =>
 
 export function AssignmentDashboard() {
   const router = useRouter()
-  const { user, userName, loading } = useAuthenticatedUser()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [dashboardLoading, setDashboardLoading] = useState(true)
   const [error, setError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
 
+  const { logout } = useAuth();
+  const { user, loading } = useAuthenticatedUser();
+
+  // Redirect to signin if not logged in
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/signin')
+      router.replace('/login')
     }
   }, [loading, router, user])
 
+  // Load assignments for the user
   useEffect(() => {
     const loadAssignments = async () => {
       if (!user) return
@@ -56,6 +61,7 @@ export function AssignmentDashboard() {
     void loadAssignments()
   }, [user])
 
+  // Calculate stats for the dashboard
   const stats = useMemo(() => {
     const active = assignments.length
     const dueSoon = assignments.filter((assignment) => daysUntil(assignment.deadline) <= 3).length
@@ -70,6 +76,7 @@ export function AssignmentDashboard() {
     return { active, dueSoon, averageProgress }
   }, [assignments])
 
+  // Handle creating a new assignment
   const handleCreate = async (values: {
     title: string
     upload: AssignmentUpload
@@ -95,7 +102,14 @@ export function AssignmentDashboard() {
     router.push(`/profile/assignments/${assignmentId}`)
   }
 
-  if (loading || (!user && !error)) {
+  // Handle logging out
+  const handleLogout = async () => {
+    console.log("Logging out...")
+    await logout();
+    console.log("Logged out")
+  }
+
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f5ef] pt-24">
         <div className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm">
@@ -103,6 +117,10 @@ export function AssignmentDashboard() {
         </div>
       </div>
     )
+  }
+
+  if (!user) {
+    return null
   }
 
   return (
@@ -116,7 +134,7 @@ export function AssignmentDashboard() {
                 Assignment OS
               </div>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-                Welcome back, {userName}. Your assignment workflow now lives in one place.
+                Welcome back, {user?.displayName}. Your assignment workflow now lives in one place.
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
                 Track deadlines, break down briefs, write in a focused workspace, and keep references and review checks alongside the draft.
@@ -282,12 +300,10 @@ export function AssignmentDashboard() {
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-              <h3 className="text-lg font-semibold text-slate-950">What ships in V1</h3>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                <li>Seeded assignment breakdown and structure generation</li>
-                <li>Single writing canvas with section-aware guidance</li>
-                <li>Micro-assist actions for tone, clarity, and depth</li>
-              </ul>
+              <Button className="bg-red-600 text-white hover:bg-red-700" onClick={() => handleLogout()}>
+                <FilePenLine className="size-4" />
+                Logout
+              </Button>
             </div>
           </aside>
         </section>

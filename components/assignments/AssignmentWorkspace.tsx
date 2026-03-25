@@ -2,11 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, AlignCenter, AlignLeft, AlignRight, Bold, CheckCircle2, ClipboardCheck, Copy, Download, FileSearch, GraduationCap, Italic, LibraryBig, Link2, List, ListOrdered, Loader2, Pilcrow, Sparkles, Strikethrough, Underline, WandSparkles } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ClipboardCheck, FileSearch, GraduationCap, LibraryBig, Loader2, Sparkles, WandSparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ReferenceGenerator } from '@/components/ReferenceGenerator'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, } from '@/components/ui/dropdown-menu'
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, } from '@/components/ui/sidebar'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 import { applyAssistAction, computeSectionAnchors, extractSectionText, generateSectionGuidance, getActiveSectionId, } from '@/lib/assignments/intelligence'
@@ -22,29 +21,6 @@ const assistActions: { id: AssistAction; label: string }[] = [
   { id: 'add-example', label: 'Add Example' },
   { id: 'continue-writing', label: 'Continue Writing' },
 ]
-
-const topMenus = ['File', 'Edit', 'Insert', 'Format', 'Help']
-
-const formattingActions = [
-  { icon: Bold, label: 'Bold' },
-  { icon: Italic, label: 'Italic' },
-  { icon: Underline, label: 'Underline' },
-  { icon: Strikethrough, label: 'Strikethrough' },
-  { icon: Pilcrow, label: 'Paragraph' },
-  { icon: List, label: 'Bullet list' },
-  { icon: ListOrdered, label: 'Numbered list' },
-  { icon: AlignLeft, label: 'Align left' },
-  { icon: AlignCenter, label: 'Align center' },
-  { icon: AlignRight, label: 'Align right' },
-  { icon: Link2, label: 'Insert link' },
-]
-
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value))
 
 const countWords = (value: string) => value.trim().split(/\s+/).filter(Boolean).length
 
@@ -108,7 +84,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/signin')
+      router.replace('/login')
     }
   }, [loading, router, user])
 
@@ -393,7 +369,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     setAssistMessage('Draft downloaded as a text file.')
   }
 
-  if (loading || loadingAssignment) {
+  if (loading || (user && loadingAssignment)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f5ef]">
         <div className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm">
@@ -401,6 +377,10 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
         </div>
       </div>
     )
+  }
+
+  if (!user) {
+    return null
   }
 
   if (error || !assignment || !liveAssignment) {

@@ -17,6 +17,8 @@ function Page() {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('');
 
+  // TO DO: Check if data is in firestore is updated before or after API call. OR inside the API call.
+
   const handleGoogleSignIn = async () => {
     try {
       const userCredential = await signInWithPopup(auth, provider);
@@ -45,7 +47,8 @@ function Page() {
         });
 
         if (!res.ok) {
-          setFormError('Failed to create session cookie');
+          setFormError('Failed to create session');
+          return Response.json({ error: "Failed to create" }, { status: 401 });
         }
 
         router.push('/complete-profile');

@@ -1,4 +1,5 @@
 import "server-only";
+
 import admin from "firebase-admin";
 
 function formatPrivateKey(key: string | undefined): string {

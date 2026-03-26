@@ -11,6 +11,9 @@ import { db } from '@/lib/Database/Firebase'
 import { FirebaseError } from 'firebase/app'
 import { Button } from "@/components/ui/button"
 import { setCsrfToken } from '@/lib/security/csrfProtection'
+import { IoSchoolSharp } from "react-icons/io5";
+import { FaArrowLeft } from "react-icons/fa";
+import { Loader2 } from 'lucide-react';
 
 // TO DO: Check if data is in firestore is updated before or after API call. OR inside the API call.
 
@@ -33,6 +36,7 @@ function Page() {
     }, []);
 
     const handleGoogleSignIn = async () => {
+        setIsLoading(true);
         try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
@@ -53,10 +57,12 @@ function Page() {
             }
 
             const data = await res.json();
+            setIsLoading(false);
             router.push(data.redirectTo);
 
         } catch (error) {
             console.error('Error signing in with Google:', error);
+            setIsLoading(false);
             if (error instanceof FirebaseError && error.code === 'auth/popup-closed-by-user') {
                 setFormError('Sign-in cancelled')
                 return Response.json({ error: "Sign-in cancelled" }, { status: 401 });
@@ -67,68 +73,61 @@ function Page() {
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <Loader2 className="animate-spin text-2xl" />
+            </div>
+        )
+    }
+
     return (
-        <div className="container relative h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-            {/* Left Side: Branding/Quote */}
-            <div className="relative hidden h-full flex-col bg-muted pl-10 pt-5 text-white dark:border-r lg:flex">
-                <div className="absolute inset-0 bg-zinc-900" />
-                <Link href="/" className="relative z-20 flex items-center text-lg font-medium">
-                    Universitifier
-                </Link>
-            </div>
-
-            {/* Right Side: Sign Up Form */}
-            <div className="lg:p-8 bg-black h-full flex items-center">
-                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-                    <div className="flex flex-col space-y-2 text-center">
-                        <h1 className="text-2xl font-semibold tracking-tight text-white">
-                            Login to your account
-                        </h1>
-                        <p className="text-sm text-zinc-400">
-                            Login using Google
-                        </p>
+        <section className="bg-surface text-on-surface font-body min-h-screen flex flex-col overflow-x-hidden">
+            {/* <!-- TopAppBar - Suppressed per Shell Visibility Rule for Transactional Pages --> */}
+            {/* <!-- However, the prompt explicitly asks for TopAppBar and Footer. Following Prompt instructions as priority override. --> */}
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent">
+                <div className="flex justify-between items-center w-full px-8 py-6 max-w-7xl mx-auto">
+                    <div className="text-2xl font-bold text-emerald-900 font-headline tracking-tight">Universitifier</div>
+                    <div className="hidden md:flex items-center space-x-8">
+                        <a className="text-emerald-800 font-semibold font-['Inter']" href="#">Sign In</a>
                     </div>
-
-                    <div className="grid gap-6 justify-center ">
-                        <div className="relative">
-                            <Button
-                                variant="outline"
-                                type="button"
-                                disabled={isLoading}
-                                onClick={handleGoogleSignIn}
-                                className="border-zinc-800 bg-transparent py-5 px-20 text-white"
-                            >
-                                <FcGoogle className="mr-2 h-8 w-8" />
-                                Google
-                            </Button>
-                        </div>
-
-                        {/* Error message */}
-                        {formError && (
-                            <div className="text-red-500 text-center animate-pulse">{formError}</div>
-                        )}
-                    </div>
-
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-zinc-800" />
-                        </div>
-                    </div>
-
-                    <p className="px-8 text-center text-sm text-zinc-400">
-                        By clicking continue, you agree to our{" "}
-                        <Link href="/terms" className="underline underline-offset-4 hover:text-white">
-                            Terms of Service
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="/privacy" className="underline underline-offset-4 hover:text-white">
-                            Privacy Policy
-                        </Link>
-                        .
-                    </p>
                 </div>
-            </div>
-        </div>
+            </nav>
+
+            {/* <!-- Main Content Canvas --> */}
+            <main className="flex-grow flex items-center justify-center px-6 pt-24 pb-12 relative overflow-hidden">
+                {/* <!-- Subtle Academic Decorative Elements --> */}
+                <div className="absolute top-[-10%] right-[-5%] w-[40rem] h-[40rem] bg-primary-container/20 rounded-full blur-[120px] pointer-events-none"></div>
+                <div className="absolute bottom-[-10%] left-[-5%] w-[35rem] h-[35rem] bg-tertiary-container/10 rounded-full blur-[100px] pointer-events-none"></div>
+                <div className="w-full max-w-md z-10">
+                    {/* <!-- Login Card --> */}
+                    <div className="bg-surface-container-lowest editorial-shadow rounded-xl p-10 md:p-12 text-center transition-all duration-300">
+                        {/* <!-- Brand Icon/Identity --> */}
+                        <div className="mb-8 inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary-container text-on-primary-container">
+                            <IoSchoolSharp className='text-4xl' />
+                        </div>
+                        {/* <!-- Headline --> */}
+                        <h1 className="font-headline text-4xl md:text-5xl font-bold text-on-surface tracking-tight mb-4 bricolage leading-tight">
+                            Welcome back, Student
+                        </h1>
+                        <p className="text-on-surface-variant text-lg mb-10 leading-relaxed font-body">
+                            Your digital sanctuary for academic excellence and curated focus.
+                        </p>
+                        {/* <!-- Sign in with Google Button --> */}
+                        <button onClick={handleGoogleSignIn} className="cursor-pointer w-full flex items-center justify-center gap-4 bg-surface-container-lowest border border-outline-variant/20 hover:bg-surface-container-low text-on-surface font-medium py-4 px-6 rounded-full transition-all duration-200 group active:scale-[0.98]">
+                            <FcGoogle className='text-2xl' />
+                            <span className="text-base">Sign in with Google</span>
+                        </button>
+
+                        {/* Back button with arrow  */}
+                        <button onClick={() => router.back()} className="mt-8 cursor-pointer w-full flex items-center justify-center gap-4 bg-surface-container-lowest text-on-surface font-medium py-4 px-6 rounded-full transition-all duration-200 group active:scale-[0.98]">
+                            <FaArrowLeft className='text-md' />
+                            <span className="text-base">Back</span>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </section>
     )
 }
 

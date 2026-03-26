@@ -1,16 +1,16 @@
 'use client'
 
-import { VscReferences, VscWholeWord, } from "react-icons/vsc";
-import { FaBrain } from "react-icons/fa";
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/Database/Firebase"
+import { useEffect, useState } from 'react';
 import { useRouter } from "next/navigation";
-import Image from 'next/image';
-import FloatingNav from '@/components/FloatingNav';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import { BsStars } from "react-icons/bs";
+import { IoPlayCircleOutline } from "react-icons/io5";
+import { FaRegCalendarAlt } from "react-icons/fa";
+import { MdDashboard } from "react-icons/md";
+import { MdGroups2 } from "react-icons/md";
+import { FaRegCheckCircle } from "react-icons/fa";
+import Link from 'next/link';
 
 export default function HomePage() {
   const [visibleSections, setVisibleSections] = useState(new Set());
@@ -43,20 +43,20 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative px-8 pt-20 pb-32 overflow-hidden">
+      <section className="relative px-8 pt-40 pb-32 overflow-hidden">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="z-10">
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container text-xs font-bold tracking-widest uppercase mb-6">Elevate Your Academics</span>
-            <h1 className="font-editorial text-6xl md:text-7xl text-on-surface leading-[1.1] tracking-tighter mb-8">
+            <h1 className="font-editorial font-bold text-6xl md:text-7xl text-on-surface leading-[1.1] tracking-tighter mb-8">
               Master Your Academic <span className="text-primary italic">Journey.</span>
             </h1>
             <p className="text-xl text-on-surface-variant max-w-xl mb-10 leading-relaxed">
               The scholarly catalyst for organizing assignments, tracking progress, and reaching your potential. Transform academic pressure into prestige.
             </p>
             <div className="flex flex-wrap gap-4">
-              <button className="bg-primary text-on-primary px-8 py-4 rounded-full text-lg font-bold hover:bg-primary-dim transition-all active:scale-95 shadow-xl shadow-primary/20">Get Started for Free</button>
-              <button className="bg-surface-container-high text-on-surface px-8 py-4 rounded-full text-lg font-bold hover:bg-surface-container-highest transition-all active:scale-95 flex items-center gap-2">
-                <span className="material-symbols-outlined">play_circle</span>
+              <Link href="/login" className="cursor-pointer bg-primary text-on-primary px-8 py-4 rounded-full text-lg font-bold hover:bg-primary-dim transition-all active:scale-95 shadow-xl shadow-primary/20">Get Started for Free</Link>
+              <button className="cursor-pointer bg-surface-container-high text-on-surface px-8 py-4 rounded-full text-lg font-bold hover:bg-surface-container-highest transition-all active:scale-95 flex items-center gap-2">
+                <IoPlayCircleOutline className='text-3xl' />
                 View Demo
               </button>
             </div>
@@ -84,7 +84,7 @@ export default function HomePage() {
                   <span className="font-editorial text-lg">Active Session: Thesis Prep</span>
                   <span className="bg-primary text-on-primary text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Deep Work</span>
                 </div>
-                <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-white/90 h-2 rounded-full overflow-hidden">
                   <div className="bg-primary h-full w-3/4 rounded-full"></div>
                 </div>
               </div>
@@ -93,7 +93,7 @@ export default function HomePage() {
             <div className="absolute -bottom-10 -left-10 p-6 bg-surface-container-lowest rounded-xl shadow-2xl max-w-[240px] border border-outline-variant/10 hidden md:block">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
-                  <span className="material-symbols-outlined">auto_awesome</span>
+                  <BsStars className="text-primary text-xl" />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-on-surface-variant">Smart Priority</p>
@@ -113,7 +113,7 @@ export default function HomePage() {
       <section className="py-24 px-8 bg-surface-container-low">
         <div className="max-w-7xl mx-auto">
           <div className="mb-16 text-center">
-            <h2 className="font-editorial text-4xl md:text-5xl text-on-surface mb-4">Built for Success</h2>
+            <h2 className="font-editorial font-bold text-4xl md:text-5xl text-on-surface mb-4">Built for Success</h2>
             <p className="text-on-surface-variant text-lg max-w-2xl mx-auto">Precision-engineered tools to streamline your academic workflow and eliminate digital friction.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -121,17 +121,17 @@ export default function HomePage() {
             <div className="md:col-span-2 bg-surface-container-lowest p-8 rounded-xl shadow-sm hover:shadow-md transition-shadow group flex flex-col md:flex-row gap-8 overflow-hidden">
               <div className="flex-1">
                 <div className="w-12 h-12 bg-primary-container rounded-lg flex items-center justify-center text-on-primary-container mb-6">
-                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
+                  <MdDashboard className="text-primary text-2xl" />
                 </div>
                 <h3 className="font-editorial text-2xl mb-4">Elite Dashboard</h3>
                 <p className="text-on-surface-variant leading-relaxed mb-6">A centralized hub for your academic life. View deadlines, active projects, and real-time progress metrics in one glance.</p>
                 <ul className="space-y-3">
                   <li className="flex items-center gap-2 text-sm font-medium text-on-surface">
-                    <span className="material-symbols-outlined text-primary text-lg">check_circle</span>
+                    <span className="text-primary text-lg"><FaRegCheckCircle /></span>
                     Customizable Widget Layout
                   </li>
                   <li className="flex items-center gap-2 text-sm font-medium text-on-surface">
-                    <span className="material-symbols-outlined text-primary text-lg">check_circle</span>
+                    <span className="text-primary text-lg"><FaRegCheckCircle /></span>
                     AI-Powered Task Sorter
                   </li>
                 </ul>
@@ -143,7 +143,7 @@ export default function HomePage() {
             {/* <!-- Feature 2: Smart Calendar --> */}
             <div className="bg-surface-container-lowest p-8 rounded-xl shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-secondary-container rounded-lg flex items-center justify-center text-on-secondary-container mb-6">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
+                <FaRegCalendarAlt className="text-primary text-xl" />
               </div>
               <h3 className="font-editorial text-2xl mb-4">Smart Calendar</h3>
               <p className="text-on-surface-variant leading-relaxed">Automatic course syllabus parsing that maps your entire semester in seconds. Never miss a deadline again.</p>
@@ -166,7 +166,7 @@ export default function HomePage() {
             {/* <!-- Feature 3: Collaboration --> */}
             <div className="bg-surface-container-lowest p-8 rounded-xl shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-tertiary-container rounded-lg flex items-center justify-center text-on-tertiary-container mb-6">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>groups</span>
+                <MdGroups2 className="text-primary text-2xl" />
               </div>
               <h3 className="font-editorial text-2xl mb-4">Sync Teams</h3>
               <p className="text-on-surface-variant leading-relaxed">Collaborate on group projects without the chaos. Shared task boards and integrated file sharing built for scholars.</p>
@@ -182,7 +182,7 @@ export default function HomePage() {
                 <div className="relative w-40 h-40">
                   <svg className="w-full h-full transform -rotate-90">
                     <circle className="text-primary-dim" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" strokeWidth="12"></circle>
-                    <circle className="text-on-primary" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" stroke-dasharray="440" stroke-dashoffset="110" strokeWidth="12"></circle>
+                    <circle className="text-on-primary" cx="80" cy="80" fill="transparent" r="70" stroke="currentColor" strokeDasharray="440" strokeDashoffset="110" strokeWidth="12"></circle>
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-on-primary">
                     <span className="text-4xl font-editorial">75%</span>
@@ -205,8 +205,8 @@ export default function HomePage() {
             <h2 className="font-editorial text-4xl md:text-6xl text-on-primary mb-8 tracking-tighter">Ready to catalyze your potential?</h2>
             <p className="text-on-primary/80 text-xl max-w-2xl mx-auto mb-12">Join the next generation of academic leaders. Get started with your personalized dashboard today.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-on-primary text-primary px-10 py-5 rounded-full text-xl font-bold hover:bg-white transition-all shadow-xl active:scale-95">Start For Free</button>
-              <button className="bg-primary-dim/30 backdrop-blur-md text-on-primary border border-on-primary/20 px-10 py-5 rounded-full text-xl font-bold hover:bg-primary-dim/50 transition-all active:scale-95">Compare Plans</button>
+              <Link href="/login" className="bg-on-primary text-primary px-10 py-5 rounded-full text-xl font-bold hover:bg-white transition-all shadow-xl active:scale-95">Start For Free</Link>
+              {/* <Link href="/pricing" className="bg-primary-dim/30 backdrop-blur-md text-on-primary border border-on-primary/20 px-10 py-5 rounded-full text-xl font-bold hover:bg-primary-dim/50 transition-all active:scale-95">Compare Plans</Link> */}
             </div>
             <p className="mt-8 text-on-primary/60 text-sm">No credit card required. Cancel anytime.</p>
           </div>

@@ -2,10 +2,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button'
 import { Assignment } from '@/lib/assignments/types'
 import {
-  AlignCenter, AlignLeft, AlignRight, Bold, Copy, Download, Italic,
-  Link2, List, ListOrdered, Strikethrough, Underline,
-  Undo2, Redo2, Printer, Type, Highlighter, ChevronDown,
-  Search, Baseline, Image as ImageIcon
+  Copy,
+  Download,
 } from 'lucide-react'
 
 const topMenus = ['File', 'Edit', 'Insert', 'Format', 'Help']
@@ -77,47 +75,7 @@ function AssignmentHeader({ assignment, documentText, saveState, handleCopyExpor
           </div>
         </div>
 
-        {/* Formatting Toolbar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-0.5 rounded-full border border-slate-200 bg-[#f8fafc] p-1 shadow-sm">
-            {/* History Group */}
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-600"><Undo2 className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-600"><Redo2 className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-600"><Printer className="size-4" /></Button>
-
-            <div className="mx-1 h-4 w-[1px] bg-slate-300" /> {/* Separator */}
-
-            {/* Text Style Group */}
-            <Button variant="ghost" className="h-8 gap-1 px-2 text-xs font-medium text-slate-700 rounded-full">
-              Normal text <ChevronDown className="size-3" />
-            </Button>
-
-            <div className="mx-1 h-4 w-[1px] bg-slate-300" />
-
-            {/* Font Control */}
-            <Button variant="ghost" className="h-8 gap-1 px-2 text-xs font-medium text-slate-700 rounded-full">
-              Inter <ChevronDown className="size-3" />
-            </Button>
-
-            <div className="mx-1 h-4 w-[1px] bg-slate-300" />
-
-            {/* Main Formatting */}
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full font-bold text-slate-700"><Bold className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full italic text-slate-700"><Italic className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-700"><Underline className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-700"><Baseline className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-700"><Highlighter className="size-4" /></Button>
-
-            <div className="mx-1 h-4 w-[1px] bg-slate-300" />
-
-            {/* Tools Group */}
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-600"><Link2 className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-600"><ImageIcon className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-600"><AlignLeft className="size-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-600"><List className="size-4" /></Button>
-          </div>
-
-          {/* Action Buttons */}
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleCopyExport} className="h-8 gap-2 rounded-full border-slate-200 px-4 text-xs font-semibold hover:bg-slate-50">
               <Copy className="size-3.5" />

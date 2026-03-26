@@ -1,17 +1,22 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle2, ClipboardCheck, FileSearch, GraduationCap, LibraryBig, Loader2, Sparkles, WandSparkles } from 'lucide-react'
-
+import type { Editor as TinyMCEEditorInstance } from 'tinymce'
 import { Button } from '@/components/ui/button'
 import { ReferenceGenerator } from '@/components/ReferenceGenerator'
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, } from '@/components/ui/sidebar'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
-import { applyAssistAction, computeSectionAnchors, extractSectionText, generateSectionGuidance, getActiveSectionId, } from '@/lib/assignments/intelligence'
+import { applyAssistAction, computeSectionAnchors, extractSectionText, generateSectionGuidance, getActiveSectionId } from '@/lib/assignments/intelligence'
 import { fetchAssignmentById, recomputeAssignmentState, updateAssignment, } from '@/lib/assignments/firestore'
 import type { Assignment, AssignmentReference, AssistAction } from '@/lib/assignments/types'
 import AssignmentHeader from './AssignmentHeader'
+
+const TinyMCEEditor = dynamic(
+  () => import('@tinymce/tinymce-react').then((mod) => mod.Editor),
+  { ssr: false }
+)
 
 const assistActions: { id: AssistAction; label: string }[] = [
   { id: 'academic-tone', label: 'Improve Academic Tone' },
@@ -23,6 +28,87 @@ const assistActions: { id: AssistAction; label: string }[] = [
 ]
 
 const countWords = (value: string) => value.trim().split(/\s+/).filter(Boolean).length
+
+const htmlToPlainText = (value: string) => {
+  const withLineBreaks = value
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote|section|article)>/gi, '\n')
+    .replace(/<li>/gi, '- ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+
+  return withLineBreaks.replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim()
+}
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+
+const plainTextToHtml = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return '<p></p>'
+
+  return trimmed
+    .split(/\n{2,}/)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, '<br />')}</p>`)
+    .join('')
+}
+
+const normalizeEditorContent = (value: string) => {
+  if (!value.trim()) return '<p></p>'
+  return /<\/?[a-z][\s\S]*>/i.test(value) ? value : plainTextToHtml(value)
+}
+
+const findTextNodeContaining = (root: Node, target: string) => {
+  const ownerDocument = root.ownerDocument
+  if (!ownerDocument) return null
+
+  const walker = ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  let current = walker.nextNode()
+
+  while (current) {
+    const textContent = current.textContent ?? ''
+    const startIndex = textContent.indexOf(target)
+
+    if (startIndex > -1) {
+      return { node: current, startIndex }
+    }
+
+    current = walker.nextNode()
+  }
+
+  return null
+}
+
+const getSelectionOffsets = (editor: TinyMCEEditorInstance) => {
+  const body = editor.getBody()
+  const selection = editor.selection.getRng()
+  const ownerDocument = body?.ownerDocument
+
+  if (!body || !selection || !ownerDocument) {
+    return { start: 0, end: 0 }
+  }
+
+  const startRange = ownerDocument.createRange()
+  startRange.selectNodeContents(body)
+  startRange.setEnd(selection.startContainer, selection.startOffset)
+
+  const endRange = ownerDocument.createRange()
+  endRange.selectNodeContents(body)
+  endRange.setEnd(selection.endContainer, selection.endOffset)
+
+  return {
+    start: startRange.toString().length,
+    end: endRange.toString().length,
+  }
+}
 
 const buildSmartChecklist = ({
   assignment,
@@ -72,10 +158,10 @@ const buildSmartChecklist = ({
 export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) {
   const router = useRouter()
   const { user, loading } = useAuthenticatedUser()
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const editorRef = useRef<TinyMCEEditorInstance | null>(null)
 
   const [assignment, setAssignment] = useState<Assignment | null>(null)
-  const [documentText, setDocumentText] = useState('')
+  const [editorContent, setEditorContent] = useState('<p></p>')
   const [loadingAssignment, setLoadingAssignment] = useState(true)
   const [error, setError] = useState('')
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -105,7 +191,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
         }
 
         setAssignment(nextAssignment)
-        setDocumentText(nextAssignment.document)
+        setEditorContent(normalizeEditorContent(nextAssignment.document))
         setActiveSectionId(nextAssignment.outline[0]?.id ?? '')
       } catch (loadError) {
         console.error(loadError)
@@ -117,6 +203,8 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
 
     void loadAssignment()
   }, [assignmentId, user])
+
+  const documentText = useMemo(() => htmlToPlainText(editorContent), [editorContent])
 
   const liveAssignment = useMemo(() => {
     if (!assignment) return null
@@ -152,7 +240,8 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     }
   }, [assignment, documentText])
 
-  const activeSection = liveAssignment?.outline.find((section) => section.id === activeSectionId) ?? liveAssignment?.outline[0]
+  const activeSection =
+    liveAssignment?.outline.find((section) => section.id === activeSectionId) ?? liveAssignment?.outline[0]
   const activeSectionText =
     liveAssignment && activeSection
       ? extractSectionText(liveAssignment.document, liveAssignment.sectionAnchors, activeSection.id)
@@ -167,7 +256,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
       : null
 
   useEffect(() => {
-    if (!assignment || documentText === assignment.document) return
+    if (!assignment || editorContent === normalizeEditorContent(assignment.document)) return
 
     const timeoutId = window.setTimeout(async () => {
       const sectionAnchors = computeSectionAnchors(documentText, assignment.outline)
@@ -194,7 +283,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
 
       try {
         await updateAssignment(assignment.id, {
-          document: documentText,
+          document: editorContent,
           sectionAnchors,
           checklist,
           review: derived.review,
@@ -206,7 +295,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
           current
             ? {
               ...current,
-              document: documentText,
+              document: editorContent,
               sectionAnchors,
               checklist,
               review: derived.review,
@@ -224,7 +313,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     }, 900)
 
     return () => window.clearTimeout(timeoutId)
-  }, [assignment, documentText])
+  }, [assignment, documentText, editorContent])
 
   const syncChecklist = async (nextChecklist: Assignment['checklist']) => {
     if (!assignment || !liveAssignment) return
@@ -239,7 +328,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     const nextAssignment: Assignment = {
       ...assignment,
       checklist: nextChecklist,
-      document: documentText,
+      document: editorContent,
       sectionAnchors: liveAssignment.sectionAnchors,
       review: derived.review,
       progressPercent: derived.progressPercent,
@@ -285,7 +374,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
       ...assignment,
       checklist: nextChecklist,
       references: nextReferences,
-      document: documentText,
+      document: editorContent,
       sectionAnchors: liveAssignment.sectionAnchors,
       review: derived.review,
       progressPercent: derived.progressPercent,
@@ -304,38 +393,48 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     })
   }
 
-  const handleSelectionChange = () => {
-    if (!liveAssignment || !textareaRef.current) return
-    const cursor = textareaRef.current.selectionStart
+  const jumpToSection = (sectionId: string) => {
+    if (!assignment || !editorRef.current) return
+
+    const section = assignment.outline.find((item) => item.id === sectionId)
+    const body = editorRef.current.getBody?.()
+    if (!section || !body) return
+
+    const match = findTextNodeContaining(body, section.title)
+    if (!match) return
+
+    const range = body.ownerDocument.createRange()
+    range.setStart(match.node, match.startIndex)
+    range.setEnd(match.node, match.startIndex + section.title.length)
+    editorRef.current.selection.setRng(range)
+    editorRef.current.focus()
+    match.node.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setActiveSectionId(sectionId)
+  }
+
+  const handleEditorSelectionChange = (editor: TinyMCEEditorInstance) => {
+    if (!liveAssignment) return
+
+    const { start } = getSelectionOffsets(editor)
     setActiveSectionId((current) =>
-      getActiveSectionId(cursor, liveAssignment.sectionAnchors, current)
+      getActiveSectionId(start, liveAssignment.sectionAnchors, current)
     )
   }
 
   const handleAssistAction = (action: AssistAction) => {
-    if (!liveAssignment || !textareaRef.current || !activeSection) return
+    if (!liveAssignment || !editorRef.current || !activeSection) return
 
-    const textarea = textareaRef.current
+    const { start, end } = getSelectionOffsets(editorRef.current)
     const result = applyAssistAction({
       action,
       document: documentText,
-      selectionStart: textarea.selectionStart,
-      selectionEnd: textarea.selectionEnd,
+      selectionStart: start,
+      selectionEnd: end,
       activeSectionText,
     })
 
-    setDocumentText(result.document)
+    setEditorContent(plainTextToHtml(result.document))
     setAssistMessage(result.message)
-  }
-
-  const jumpToSection = (sectionId: string) => {
-    if (!liveAssignment || !textareaRef.current) return
-    const anchor = liveAssignment.sectionAnchors.find((item) => item.sectionId === sectionId)
-    if (!anchor) return
-
-    textareaRef.current.focus()
-    textareaRef.current.setSelectionRange(anchor.start, anchor.start)
-    setActiveSectionId(sectionId)
   }
 
   const handleAddReference = async (citation: string) => {
@@ -355,7 +454,6 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
 
   const handleCopyExport = async () => {
     await navigator.clipboard.writeText(documentText)
-    setAssistMessage('Draft copied to your clipboard.')
   }
 
   const handleDownload = () => {
@@ -366,7 +464,6 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     anchor.download = `${(assignment?.title || 'assignment-draft').replace(/\s+/g, '-').toLowerCase()}.txt`
     anchor.click()
     URL.revokeObjectURL(url)
-    setAssistMessage('Draft downloaded as a text file.')
   }
 
   if (loading || (user && loadingAssignment)) {
@@ -410,332 +507,310 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
         handleDownload={handleDownload}
       />
 
+      <main className="min-h-[calc(100svh-120px)] bg-[#f7f5ef] pb-12 text-slate-950">
+        <div className="px-3 pt-4 sm:px-4 lg:px-5">
+          <div className="mx-auto grid max-w-[1800px] gap-5 xl:grid-cols-[20rem_minmax(0,1fr)_23rem]">
 
-      <SidebarProvider
-        style={
-          {
-            '--sidebar-width': '21rem',
-          } as React.CSSProperties
-        }
-      >
-        <Sidebar variant="inset" collapsible="offcanvas" className="top-[172px] h-[calc(100svh-172px)]">
-          <SidebarContent className="gap-2 px-2 pb-4 pt-4">
-            <SidebarGroup>
-              <SidebarGroupLabel>Outline</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
+            {/* Left side bar  */}
+            <aside className="space-y-4 xl:sticky xl:top-[188px] xl:self-start">
+              <section className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outline</p>
+                <div className="mt-4 space-y-2">
                   {assignment.outline.map((section) => (
-                    <SidebarMenuItem key={section.id}>
-                      <SidebarMenuButton
-                        isActive={activeSectionId === section.id}
-                        onClick={() => jumpToSection(section.id)}
-                        tooltip={section.title}
-                      >
-                        <span>{section.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => jumpToSection(section.id)}
+                      className={`flex w-full items-start rounded-2xl px-3 py-3 text-left text-sm transition ${activeSectionId === section.id
+                        ? 'bg-emerald-50 font-semibold text-emerald-700'
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                      {section.title}
+                    </button>
                   ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarSeparator />
-
-            <SidebarGroup>
-              <SidebarGroupLabel>Upload</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-600 shadow-sm">
-                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    <FileSearch className="size-3.5 text-emerald-600" />
-                    Assignment File
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-semibold text-slate-900">{assignment.upload.fileName}</p>
-                    <p className="text-xs text-slate-500">{assignment.upload.mimeType}</p>
-                    <p className="text-xs text-slate-500">
-                      {(assignment.upload.size / 1024).toFixed(1)} KB stored in Firebase
-                    </p>
-                  </div>
                 </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
+              </section>
 
-            <SidebarGroup>
-              <SidebarGroupLabel>Progress</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    <ClipboardCheck className="size-3.5 text-emerald-600" />
-                    Completion
-                  </div>
-                  <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-emerald-500"
-                      style={{ width: `${liveAssignment.progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
-                    <span>{liveAssignment.progressPercent}% complete</span>
-                    <span>{liveAssignment.status.replace('_', ' ')}</span>
-                  </div>
+              <section className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-600 shadow-sm">
+                <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <FileSearch className="size-3.5 text-emerald-600" />
+                  Assignment File
+                </div>
+                <div className="space-y-2">
+                  <p className="font-semibold text-slate-900">{assignment.upload.fileName}</p>
+                  <p className="text-xs text-slate-500">
+                    {(assignment.upload.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              </section>
 
-                  <div className="mt-5 space-y-3">
-                    {liveAssignment.checklist.map((item) => (
-                      <label key={item.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 px-3 py-3 text-sm text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={item.completed}
-                          onChange={(event) =>
-                            void syncChecklist(
-                              liveAssignment.checklist.map((check) =>
-                                check.id === item.id ? { ...check, completed: event.target.checked } : check
-                              )
+              <section className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <ClipboardCheck className="size-3.5 text-emerald-600" />
+                  Completion
+                </div>
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-emerald-500"
+                    style={{ width: `${liveAssignment.progressPercent}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
+                  <span>{liveAssignment.progressPercent}% complete</span>
+                  <span>{liveAssignment.status.replace('_', ' ')}</span>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {liveAssignment.checklist.map((item) => (
+                    <label key={item.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 px-3 py-3 text-sm text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={item.completed}
+                        onChange={(event) =>
+                          void syncChecklist(
+                            liveAssignment.checklist.map((check) =>
+                              check.id === item.id ? { ...check, completed: event.target.checked } : check
                             )
-                          }
-                          className="mt-0.5 size-4 rounded border-slate-300 text-emerald-600"
-                        />
-                        <span>{item.label}</span>
-                      </label>
-                    ))}
-                  </div>
+                          )
+                        }
+                        className="mt-0.5 size-4 rounded border-slate-300 text-emerald-600"
+                      />
+                      <span>{item.label}</span>
+                    </label>
+                  ))}
                 </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
+              </section>
 
-            <SidebarGroup>
-              <SidebarGroupLabel>Requirements</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <div className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                  <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    <GraduationCap className="size-3.5 text-emerald-600" />
-                    Expectations
-                  </div>
-                  <ul className="space-y-3 text-sm leading-6 text-slate-600">
-                    {assignment.breakdown.requirements.map((requirement) => (
-                      <li key={requirement} className="rounded-2xl bg-slate-50 px-3 py-3">
-                        {requirement}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-4 rounded-2xl bg-[#122118] px-4 py-4 text-sm text-emerald-50">
-                    <p className="font-semibold text-white">Deliverable</p>
-                    <p className="mt-1">{assignment.breakdown.deliverable}</p>
-                  </div>
+              <section className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <GraduationCap className="size-3.5 text-emerald-600" />
+                  Expectations
                 </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <SidebarRail />
-        </Sidebar>
+                <ul className="space-y-3 text-sm leading-6 text-slate-600">
+                  {assignment.breakdown.requirements.map((requirement) => (
+                    <li key={requirement} className="rounded-2xl bg-slate-50 px-3 py-3">
+                      {requirement}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 rounded-2xl bg-[#122118] px-4 py-4 text-sm text-emerald-50">
+                  <p className="font-semibold text-white">Deliverable</p>
+                  <p className="mt-1">{assignment.breakdown.deliverable}</p>
+                </div>
+              </section>
+            </aside>
 
-        <SidebarInset className="min-h-[calc(100svh-172px)] bg-[#f7f5ef] md:m-0 md:rounded-none md:shadow-none">
-          <main className="pb-12 text-slate-950">
-            <div className="px-3 pt-4 sm:px-4 lg:px-5">
-              <div className="mb-4 flex items-center">
-                <SidebarTrigger className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" />
+            {/* need to make the height full */}
+            <section className="min-w-0 flex items-start justify-center">
+              <div className="w-full max-w-[800px] border border-slate-200 bg-[#eef2f3] shadow-sm">
+                <div className="px-2 py-2">
+                  <TinyMCEEditor
+                    apiKey={process.env.NEXT_PUBLIC_TINYMCE_API_KEY || 'no-api-key'}
+                    value={editorContent}
+                    onEditorChange={(value) => setEditorContent(value)}
+                    onInit={(_, editor) => {
+                      editorRef.current = editor
+                    }}
+                    onSelectionChange={(_, editor) => {
+                      handleEditorSelectionChange(editor)
+                    }}
+                    onNodeChange={(_, editor) => {
+                      handleEditorSelectionChange(editor)
+                    }}
+                    init={{
+                      menubar: false,
+                      branding: false,
+                      statusbar: false,
+                      height: 980,
+                      resize: false,
+                      promotion: false,
+                      plugins: [
+                        'advlist',
+                        'autolink',
+                        'lists',
+                        'link',
+                        'image',
+                        'charmap',
+                        'preview',
+                        'anchor',
+                        'searchreplace',
+                        'visualblocks',
+                        'code',
+                        'fullscreen',
+                        'insertdatetime',
+                        'media',
+                        'table',
+                        'wordcount',
+                      ],
+                      toolbar:
+                        'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image table | removeformat',
+                      font_family_formats:
+                        'Inter=Inter,sans-serif;Space Grotesk="Space Grotesk",sans-serif;Bricolage Grotesque="Bricolage Grotesque",sans-serif;Arial=arial,helvetica,sans-serif;Times New Roman="Times New Roman",times,serif',
+                      content_style: `
+                        body {
+                          background: #fffefb;
+                          color: #2c2f30;
+                          font-family: Inter, sans-serif;
+                          font-size: 15px;
+                          line-height: 2;
+                          max-width: 850px;
+                          margin: 0 auto;
+                          padding: 32px 40px;
+                        }
+                        p { margin: 0 0 1rem; }
+                        h1, h2, h3, h4 {
+                          font-family: "Space Grotesk", sans-serif;
+                          color: #0f172a;
+                        }
+                      `,
+                      skin: 'oxide',
+                      content_css: 'default',
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+
+            <aside className="space-y-4 xl:sticky xl:top-[188px] xl:self-start">
+              <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <Sparkles className="size-4 text-emerald-600" />
+                  Section Intelligence
+                </div>
+                <h2 className="mt-3 text-lg font-semibold text-slate-950">
+                  {activeSection?.title || 'Current section'}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {activeSection?.description}
+                </p>
+
+                {sectionGuidance ? (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Suggested arguments</p>
+                      <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
+                        {sectionGuidance.suggestedArguments.map((item) => (
+                          <li key={item} className="rounded-2xl bg-slate-50 px-3 py-2.5">{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Common mistakes</p>
+                      <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
+                        {sectionGuidance.commonMistakes.map((item) => (
+                          <li key={item} className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2.5">{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="flex justify-center">
-                <section className="w-full max-w-5xl rounded-[1.8rem] border border-slate-200 bg-[#eef2f3] p-4 shadow-sm">
-                  <div className="rounded-[1.7rem] border border-slate-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.08)]">
-                    <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                          Document Canvas
-                        </p>
-                        <h2 className="mt-1 text-xl font-semibold">Focused draft editor</h2>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {assignment.outline.map((section) => (
-                          <button
-                            key={section.id}
-                            type="button"
-                            onClick={() => jumpToSection(section.id)}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] transition ${activeSectionId === section.id
-                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                              : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-300'
-                              }`}
-                          >
-                            {section.title}
-                          </button>
+              <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <WandSparkles className="size-4 text-emerald-600" />
+                  AI Assist
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {assistActions.map((action) => (
+                    <Button key={action.id} variant="outline" className="justify-start text-left" onClick={() => handleAssistAction(action.id)}>
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs leading-5 text-slate-500">
+                  Assist tools only transform the selected text or active section. They do not generate an entire essay for the user.
+                </p>
+                {assistMessage ? (
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-700">
+                    {assistMessage}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <LibraryBig className="size-4 text-emerald-600" />
+                  Research Guidance
+                </div>
+                {sectionGuidance ? (
+                  <div className="mt-4 space-y-4 text-sm text-slate-600">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Topics to search</p>
+                      <ul className="mt-2 space-y-2">
+                        {sectionGuidance.researchTopics.map((topic) => (
+                          <li key={topic} className="rounded-2xl bg-slate-50 px-3 py-2.5">{topic}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Keywords</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {sectionGuidance.keywords.map((keyword) => (
+                          <span key={keyword} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
+                            {keyword}
+                          </span>
                         ))}
                       </div>
                     </div>
+                  </div>
+                ) : null}
+              </div>
 
-                    <div className="px-5 py-6">
-                      <textarea
-                        ref={textareaRef}
-                        value={documentText}
-                        onChange={(event) => {
-                          setDocumentText(event.target.value)
-                          const anchors = computeSectionAnchors(event.target.value, assignment.outline)
-                          setActiveSectionId((current) =>
-                            getActiveSectionId(event.target.selectionStart, anchors, current)
-                          )
-                        }}
-                        onClick={handleSelectionChange}
-                        onKeyUp={handleSelectionChange}
-                        onSelect={handleSelectionChange}
-                        spellCheck
-                        className="min-h-[980px] w-full resize-none rounded-[1.4rem] border border-slate-200 bg-[#fffefb] px-8 py-8 text-[15px] leading-8 text-slate-800 shadow-inner outline-none transition focus:border-emerald-400"
-                      />
+              <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <ReferenceGenerator
+                  embedded
+                  title="Reference Integration"
+                  description="Generate Harvard-style references and attach them directly to this assignment."
+                  references={assignment.references.map((reference) => reference.citation)}
+                  onAddReference={(citation) => void handleAddReference(citation)}
+                />
+              </div>
+
+              <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <CheckCircle2 className="size-4 text-emerald-600" />
+                  Final Review Mode
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  {liveAssignment.review.status === 'needs_attention' ? (
+                    <AlertCircle className="size-5 text-amber-500" />
+                  ) : liveAssignment.review.status === 'on_track' ? (
+                    <Loader2 className="size-5 text-sky-500" />
+                  ) : (
+                    <CheckCircle2 className="size-5 text-emerald-500" />
+                  )}
+                  <p className="text-sm font-semibold text-slate-900">
+                    {liveAssignment.review.status === 'needs_attention'
+                      ? 'Needs attention'
+                      : liveAssignment.review.status === 'on_track'
+                        ? 'On track'
+                        : 'Nearly ready'}
+                  </p>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {Object.entries(liveAssignment.review.checks).map(([key, value]) => (
+                    <div key={key} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      <span>{key.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase())}</span>
+                      <span className={value ? 'font-semibold text-emerald-700' : 'font-semibold text-amber-700'}>
+                        {value ? 'Pass' : 'Review'}
+                      </span>
                     </div>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </main>
-        </SidebarInset>
-
-        <Sidebar
-          side="right"
-          variant="inset"
-          collapsible="none"
-          className="top-[172px] hidden h-[calc(100svh-172px)] border-l border-slate-200 bg-[#f7f5ef] xl:flex"
-          style={
-            {
-              '--sidebar-width': '23rem',
-            } as React.CSSProperties
-          }
-        >
-          <SidebarContent className="gap-4 px-4 py-4">
-            <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <Sparkles className="size-4 text-emerald-600" />
-                Section Intelligence
-              </div>
-              <h2 className="mt-3 text-lg font-semibold text-slate-950">
-                {activeSection?.title || 'Current section'}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                {activeSection?.description}
-              </p>
-
-              {sectionGuidance ? (
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Suggested arguments</p>
-                    <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
-                      {sectionGuidance.suggestedArguments.map((item) => (
-                        <li key={item} className="rounded-2xl bg-slate-50 px-3 py-2.5">{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Common mistakes</p>
-                    <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
-                      {sectionGuidance.commonMistakes.map((item) => (
-                        <li key={item} className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2.5">{item}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  ))}
                 </div>
-              ) : null}
-            </div>
-
-            <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <WandSparkles className="size-4 text-emerald-600" />
-                AI Assist
+                <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
+                  {liveAssignment.review.highlights.map((item) => (
+                    <li key={item} className="rounded-2xl border border-slate-200 px-3 py-2.5">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="mt-4 grid gap-2">
-                {assistActions.map((action) => (
-                  <Button key={action.id} variant="outline" className="justify-start text-left" onClick={() => handleAssistAction(action.id)}>
-                    {action.label}
-                  </Button>
-                ))}
-              </div>
-              <p className="mt-4 text-xs leading-5 text-slate-500">
-                Assist tools only transform the selected text or active section. They do not generate an entire essay for the user.
-              </p>
-              {assistMessage ? (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-700">
-                  {assistMessage}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <LibraryBig className="size-4 text-emerald-600" />
-                Research Guidance
-              </div>
-              {sectionGuidance ? (
-                <div className="mt-4 space-y-4 text-sm text-slate-600">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Topics to search</p>
-                    <ul className="mt-2 space-y-2">
-                      {sectionGuidance.researchTopics.map((topic) => (
-                        <li key={topic} className="rounded-2xl bg-slate-50 px-3 py-2.5">{topic}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Keywords</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {sectionGuidance.keywords.map((keyword) => (
-                        <span key={keyword} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
-                          {keyword}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <ReferenceGenerator
-                embedded
-                title="Reference Integration"
-                description="Generate Harvard-style references and attach them directly to this assignment."
-                references={assignment.references.map((reference) => reference.citation)}
-                onAddReference={(citation) => void handleAddReference(citation)}
-              />
-            </div>
-
-            <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-                <CheckCircle2 className="size-4 text-emerald-600" />
-                Final Review Mode
-              </div>
-              <div className="mt-4 flex items-center gap-2">
-                {liveAssignment.review.status === 'needs_attention' ? (
-                  <AlertCircle className="size-5 text-amber-500" />
-                ) : liveAssignment.review.status === 'on_track' ? (
-                  <Loader2 className="size-5 text-sky-500" />
-                ) : (
-                  <CheckCircle2 className="size-5 text-emerald-500" />
-                )}
-                <p className="text-sm font-semibold text-slate-900">
-                  {liveAssignment.review.status === 'needs_attention'
-                    ? 'Needs attention'
-                    : liveAssignment.review.status === 'on_track'
-                      ? 'On track'
-                      : 'Nearly ready'}
-                </p>
-              </div>
-              <div className="mt-4 space-y-2">
-                {Object.entries(liveAssignment.review.checks).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                    <span>{key.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase())}</span>
-                    <span className={value ? 'font-semibold text-emerald-700' : 'font-semibold text-amber-700'}>
-                      {value ? 'Pass' : 'Review'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
-                {liveAssignment.review.highlights.map((item) => (
-                  <li key={item} className="rounded-2xl border border-slate-200 px-3 py-2.5">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </SidebarContent>
-        </Sidebar>
-      </SidebarProvider>
+            </aside>
+          </div>
+        </div>
+      </main>
     </>
   )
 }

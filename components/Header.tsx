@@ -31,8 +31,7 @@ function Header() {
           <a className="text-zinc-600 hover:text-emerald-600 transition-colors font-headline tracking-tight" href="#">Testimonials</a>
         </div>
         <div className="flex items-center space-x-4">
-          <button className="text-zinc-600 hover:text-emerald-600 transition-colors font-headline tracking-tight px-4 py-2">Log In</button>
-          <button className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-bold hover:opacity-90 active:scale-95 transition-all duration-200 shadow-lg shadow-primary/20">Get Started</button>
+          <Link href='/login' className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-bold hover:opacity-90 active:scale-95 transition-all duration-200 shadow-lg shadow-primary/20">Get Started</Link>
         </div>
       </div>
     </nav>

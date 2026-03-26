@@ -125,16 +125,24 @@ export function AssignmentDashboard() {
 
   return (
     <main className="min-h-screen bg-[#f7f5ef] px-4 pb-16 pt-28 text-slate-950 sm:px-6 lg:px-8">
+
+      {/* <!-- TopNavBar --> */}
+      <header className="fixed top-0 right-0 left-0 h-16 glass-header flex justify-end px-8 z-40 transition-all">
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs font-bold text-on-surface leading-none">{user.displayName}</p>
+            <p className="text-[0.65rem] text-on-surface-variant uppercase tracking-tighter">Undergraduate</p>
+          </div>
+          <img alt="User profile avatar" className="w-10 h-10 rounded-full object-cover border-2 border-primary-container" data-alt="Close-up portrait of a young man with a friendly expression in a modern sunlit library setting" src={user.photoURL || ''} />
+        </div>
+      </header>
+
       <div className="mx-auto max-w-7xl space-y-8">
         <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[radial-gradient(circle_at_top_left,#fef3c7_0%,#fffdf5_32%,#e9f7ef_100%)] p-8 shadow-[0_20px_70px_rgba(15,23,42,0.08)]">
           <div className="grid gap-8 lg:grid-cols-[1.4fr_0.9fr]">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600">
-                <Sparkles className="size-3.5 text-emerald-600" />
-                Assignment OS
-              </div>
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-                Welcome back, {user?.displayName}. Your assignment workflow now lives in one place.
+                Good Morning, {user?.displayName?.split(' ')[1]}.
               </h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
                 Track deadlines, break down briefs, write in a focused workspace, and keep references and review checks alongside the draft.

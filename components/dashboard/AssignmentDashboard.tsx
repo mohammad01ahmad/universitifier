@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, CalendarClock, FilePenLine, FolderOpen, Sparkles, Target, } from 'lucide-react'
+import { ArrowRight, CalendarClock, FilePenLine, FolderOpen, Target, } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal'
 import { createAssignment, fetchAssignmentsForUser } from '@/lib/assignments/firestore'
-import { parseAssignmentWithGemini } from '@/lib/assignments/parser'
-import type { Assignment, AssignmentUpload } from '@/lib/assignments/types'
-import { useAuth } from '@/lib/authContext'
+import type { Assignment, AssignmentAnalysis, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
+import { DashboardHeader } from './DashboardHeader';
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('en', {
@@ -29,7 +28,6 @@ export function AssignmentDashboard() {
   const [error, setError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
 
-  const { logout } = useAuth();
   const { user, loading } = useAuthenticatedUser();
 
   // Redirect to signin if not logged in
@@ -79,7 +77,10 @@ export function AssignmentDashboard() {
   // Handle creating a new assignment
   const handleCreate = async (values: {
     title: string
+    uploads: AssignmentUpload[]
     upload: AssignmentUpload
+    parsed: ParsedAssignmentSeed
+    analysis: AssignmentAnalysis
     wordCountTarget: number
     deadline: string
   }) => {
@@ -89,24 +90,13 @@ export function AssignmentDashboard() {
       userId: user.uid,
       title: values.title,
       upload: values.upload,
-      parsed: await parseAssignmentWithGemini({
-        title: values.title,
-        upload: values.upload,
-        wordCountTarget: values.wordCountTarget,
-      }),
+      parsed: values.parsed,
       wordCountTarget: values.wordCountTarget,
       deadline: values.deadline,
     })
 
     setCreateOpen(false)
     router.push(`/profile/assignments/${assignmentId}`)
-  }
-
-  // Handle logging out
-  const handleLogout = async () => {
-    console.log("Logging out...")
-    await logout();
-    console.log("Logged out")
   }
 
   if (loading) {
@@ -126,16 +116,8 @@ export function AssignmentDashboard() {
   return (
     <main className="min-h-screen bg-[#f7f5ef] px-4 pb-16 pt-28 text-slate-950 sm:px-6 lg:px-8">
 
-      {/* <!-- TopNavBar --> */}
-      <header className="fixed top-0 right-0 left-0 h-16 glass-header flex justify-end px-8 z-40 transition-all">
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-on-surface leading-none">{user.displayName}</p>
-            <p className="text-[0.65rem] text-on-surface-variant uppercase tracking-tighter">Undergraduate</p>
-          </div>
-          <img alt="User profile avatar" className="w-10 h-10 rounded-full object-cover border-2 border-primary-container" data-alt="Close-up portrait of a young man with a friendly expression in a modern sunlit library setting" src={user.photoURL || ''} />
-        </div>
-      </header>
+      {/* TopNavBar, Selected nav menu highlighted */}
+      <DashboardHeader />
 
       <div className="mx-auto max-w-7xl space-y-8">
         <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[radial-gradient(circle_at_top_left,#fef3c7_0%,#fffdf5_32%,#e9f7ef_100%)] p-8 shadow-[0_20px_70px_rgba(15,23,42,0.08)]">
@@ -308,10 +290,6 @@ export function AssignmentDashboard() {
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-              <Button className="bg-red-600 text-white hover:bg-red-700" onClick={() => handleLogout()}>
-                <FilePenLine className="size-4" />
-                Logout
-              </Button>
             </div>
           </aside>
         </section>

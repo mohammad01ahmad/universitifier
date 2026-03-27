@@ -13,6 +13,16 @@ export type AssignmentSection = {
   targetWords: number
 }
 
+export type AssignmentStructureSection = {
+  title: string
+  word_count: number
+  purpose: string
+}
+
+export type AssignmentStructureResponse = {
+  sections: AssignmentStructureSection[]
+}
+
 export type AssignmentChecklistItem = {
   id: string
   label: string
@@ -33,12 +43,15 @@ export type SectionAnchor = {
 }
 
 export type SectionGuidance = {
-  suggestedArguments: string[]
-  keyPoints: string[]
-  commonMistakes: string[]
-  exampleStructure: string[]
+  key_points: string[]
+  suggestions: string[]
+  common_mistakes: string[]
+}
+
+export type ResearchGuidanceResponse = {
+  angles: string[]
   keywords: string[]
-  researchTopics: string[]
+  example_ideas: string[]
 }
 
 export type AssistAction =
@@ -60,6 +73,17 @@ export type ReviewResult = {
   highlights: string[]
 }
 
+export type AssignmentReviewResponse = {
+  scores: {
+    structure: number
+    clarity: number
+    critical_thinking: number
+    referencing: number
+  }
+  issues: string[]
+  suggestions: string[]
+}
+
 export type AssignmentUpload = {
   fileName: string
   mimeType: string
@@ -72,6 +96,13 @@ export type ParsedAssignmentSeed = {
   analysisText: string
   breakdown: AssignmentBreakdown
   outline: AssignmentSection[]
+}
+
+export type AssignmentAnalysis = {
+  task_type: string
+  requirements: string[]
+  key_topics: string[]
+  rubric_points: string[]
 }
 
 export type Assignment = {

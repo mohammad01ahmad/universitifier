@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const session = request.cookies.get('session')?.value;
     const { pathname } = request.nextUrl;
 
@@ -29,5 +29,5 @@ export async function middleware(request: NextRequest) {
 
 // Optimization: Only run middleware on specific paths
 export const config = {
-    matcher: ['/', '/dashboard/:path*', '/profile/:path*', '/login', '/signup'],
+    matcher: ['/', '/profile/:path*', '/login', '/signup'],
 };

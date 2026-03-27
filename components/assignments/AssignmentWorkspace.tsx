@@ -8,9 +8,10 @@ import type { Editor as TinyMCEEditorInstance } from 'tinymce'
 import { Button } from '@/components/ui/button'
 import { ReferenceGenerator } from '@/components/ReferenceGenerator'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
-import { applyAssistAction, computeSectionAnchors, extractSectionText, generateSectionGuidance, getActiveSectionId } from '@/lib/assignments/intelligence'
+import { applyAssistAction, computeSectionAnchors, extractSectionText, getActiveSectionId } from '@/lib/assignments/intelligence'
 import { fetchAssignmentById, recomputeAssignmentState, updateAssignment, } from '@/lib/assignments/firestore'
-import type { Assignment, AssignmentReference, AssistAction } from '@/lib/assignments/types'
+import { fetchAssignmentReview, fetchResearchGuidance, fetchSectionGuidance } from '@/lib/assignments/parser'
+import type { Assignment, AssignmentReference, AssignmentReviewResponse, AssistAction, ResearchGuidanceResponse, SectionGuidance } from '@/lib/assignments/types'
 import AssignmentHeader from './AssignmentHeader'
 
 const TinyMCEEditor = dynamic(
@@ -167,6 +168,15 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [activeSectionId, setActiveSectionId] = useState('')
   const [assistMessage, setAssistMessage] = useState('')
+  const [sectionGuidance, setSectionGuidance] = useState<SectionGuidance | null>(null)
+  const [researchGuidance, setResearchGuidance] = useState<ResearchGuidanceResponse | null>(null)
+  const [guidanceLoading, setGuidanceLoading] = useState(false)
+  const [guidanceError, setGuidanceError] = useState('')
+  const [reviewResult, setReviewResult] = useState<AssignmentReviewResponse | null>(null)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+  const sectionGuidanceCache = useRef(new Map<string, SectionGuidance>())
+  const researchGuidanceCache = useRef(new Map<string, ResearchGuidanceResponse>())
 
   useEffect(() => {
     if (!loading && !user) {
@@ -246,14 +256,15 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     liveAssignment && activeSection
       ? extractSectionText(liveAssignment.document, liveAssignment.sectionAnchors, activeSection.id)
       : ''
-  const sectionGuidance =
-    liveAssignment && activeSection
-      ? generateSectionGuidance(
-        activeSection,
-        liveAssignment.analysisText || [liveAssignment.title, liveAssignment.upload.fileName].filter(Boolean).join(' '),
-        activeSectionText
-      )
-      : null
+  const assignmentContext =
+    liveAssignment
+      ? [
+        liveAssignment.title,
+        liveAssignment.analysisText,
+        ...liveAssignment.breakdown.requirements,
+        ...liveAssignment.breakdown.hiddenExpectations,
+      ].filter(Boolean).join('\n')
+      : ''
 
   useEffect(() => {
     if (!assignment || editorContent === normalizeEditorContent(assignment.document)) return
@@ -314,6 +325,67 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
 
     return () => window.clearTimeout(timeoutId)
   }, [assignment, documentText, editorContent])
+
+  useEffect(() => {
+    if (!liveAssignment || !activeSection) return
+
+    const cacheKey = `${liveAssignment.id}:${activeSection.id}:${activeSectionText}`
+    const cachedSectionGuidance = sectionGuidanceCache.current.get(cacheKey)
+    const cachedResearchGuidance = researchGuidanceCache.current.get(cacheKey)
+
+    if (cachedSectionGuidance && cachedResearchGuidance) {
+      setSectionGuidance(cachedSectionGuidance)
+      setResearchGuidance(cachedResearchGuidance)
+      setGuidanceError('')
+      return
+    }
+
+    let cancelled = false
+
+    const loadGuidance = async () => {
+      setGuidanceLoading(true)
+      setGuidanceError('')
+
+      try {
+        const [nextSectionGuidance, nextResearchGuidance] = await Promise.all([
+          fetchSectionGuidance({
+            sectionTitle: activeSection.title,
+            assignmentContext,
+            currentText: activeSectionText,
+          }),
+          fetchResearchGuidance({
+            section: activeSection.title,
+            assignmentContext,
+          }),
+        ])
+
+        if (cancelled) return
+
+        sectionGuidanceCache.current.set(cacheKey, nextSectionGuidance)
+        researchGuidanceCache.current.set(cacheKey, nextResearchGuidance)
+        setSectionGuidance(nextSectionGuidance)
+        setResearchGuidance(nextResearchGuidance)
+      } catch (loadError) {
+        if (cancelled) return
+        console.error(loadError)
+        setGuidanceError(
+          loadError instanceof Error ? loadError.message : 'We could not load section guidance right now.'
+        )
+        setSectionGuidance(null)
+        setResearchGuidance(null)
+      } finally {
+        if (!cancelled) {
+          setGuidanceLoading(false)
+        }
+      }
+    }
+
+    void loadGuidance()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeSection, activeSectionText, assignmentContext, liveAssignment])
 
   const syncChecklist = async (nextChecklist: Assignment['checklist']) => {
     if (!assignment || !liveAssignment) return
@@ -450,6 +522,38 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     ]
 
     await syncReferences(nextReferences)
+  }
+
+  const handleRunReview = async () => {
+    if (!liveAssignment) return
+
+    setReviewLoading(true)
+    setReviewError('')
+
+    try {
+      const result = await fetchAssignmentReview({
+        assignmentText: documentText,
+        rubric: [
+          ...liveAssignment.breakdown.requirements,
+          ...liveAssignment.breakdown.hiddenExpectations,
+        ],
+        structure: liveAssignment.outline.map((section) => ({
+          title: section.title,
+          purpose: section.description,
+          word_count: section.targetWords,
+        })),
+      })
+
+      setReviewResult(result)
+    } catch (reviewLoadError) {
+      console.error(reviewLoadError)
+      setReviewError(
+        reviewLoadError instanceof Error ? reviewLoadError.message : 'We could not run the final review right now.'
+      )
+      setReviewResult(null)
+    } finally {
+      setReviewLoading(false)
+    }
   }
 
   const handleCopyExport = async () => {
@@ -685,12 +789,29 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                   {activeSection?.description}
                 </p>
 
-                {sectionGuidance ? (
+                {guidanceLoading ? (
+                  <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading section guidance...
+                  </div>
+                ) : guidanceError ? (
+                  <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-700">
+                    {guidanceError}
+                  </div>
+                ) : sectionGuidance ? (
                   <div className="mt-4 space-y-4">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Suggested arguments</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Key points</p>
                       <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
-                        {sectionGuidance.suggestedArguments.map((item) => (
+                        {sectionGuidance.key_points.map((item) => (
+                          <li key={item} className="rounded-2xl bg-slate-50 px-3 py-2.5">{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Suggestions</p>
+                      <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
+                        {sectionGuidance.suggestions.map((item) => (
                           <li key={item} className="rounded-2xl bg-slate-50 px-3 py-2.5">{item}</li>
                         ))}
                       </ul>
@@ -698,7 +819,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Common mistakes</p>
                       <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
-                        {sectionGuidance.commonMistakes.map((item) => (
+                        {sectionGuidance.common_mistakes.map((item) => (
                           <li key={item} className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2.5">{item}</li>
                         ))}
                       </ul>
@@ -734,12 +855,21 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                   <LibraryBig className="size-4 text-emerald-600" />
                   Research Guidance
                 </div>
-                {sectionGuidance ? (
+                {guidanceLoading ? (
+                  <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading research guidance...
+                  </div>
+                ) : guidanceError ? (
+                  <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-700">
+                    {guidanceError}
+                  </div>
+                ) : researchGuidance ? (
                   <div className="mt-4 space-y-4 text-sm text-slate-600">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Topics to search</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Angles</p>
                       <ul className="mt-2 space-y-2">
-                        {sectionGuidance.researchTopics.map((topic) => (
+                        {researchGuidance.angles.map((topic) => (
                           <li key={topic} className="rounded-2xl bg-slate-50 px-3 py-2.5">{topic}</li>
                         ))}
                       </ul>
@@ -747,12 +877,20 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Keywords</p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {sectionGuidance.keywords.map((keyword) => (
+                        {researchGuidance.keywords.map((keyword) => (
                           <span key={keyword} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                             {keyword}
                           </span>
                         ))}
                       </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Example ideas</p>
+                      <ul className="mt-2 space-y-2">
+                        {researchGuidance.example_ideas.map((idea) => (
+                          <li key={idea} className="rounded-2xl bg-slate-50 px-3 py-2.5">{idea}</li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 ) : null}
@@ -773,39 +911,56 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                   <CheckCircle2 className="size-4 text-emerald-600" />
                   Final Review Mode
                 </div>
-                <div className="mt-4 flex items-center gap-2">
-                  {liveAssignment.review.status === 'needs_attention' ? (
-                    <AlertCircle className="size-5 text-amber-500" />
-                  ) : liveAssignment.review.status === 'on_track' ? (
-                    <Loader2 className="size-5 text-sky-500" />
-                  ) : (
-                    <CheckCircle2 className="size-5 text-emerald-500" />
-                  )}
-                  <p className="text-sm font-semibold text-slate-900">
-                    {liveAssignment.review.status === 'needs_attention'
-                      ? 'Needs attention'
-                      : liveAssignment.review.status === 'on_track'
-                        ? 'On track'
-                        : 'Nearly ready'}
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <p className="text-sm leading-6 text-slate-500">
+                    Run a structured review against the assignment rubric and generated outline.
                   </p>
+                  <Button variant="outline" onClick={() => void handleRunReview()} disabled={reviewLoading}>
+                    {reviewLoading ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Run Review
+                  </Button>
                 </div>
-                <div className="mt-4 space-y-2">
-                  {Object.entries(liveAssignment.review.checks).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      <span>{key.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase())}</span>
-                      <span className={value ? 'font-semibold text-emerald-700' : 'font-semibold text-amber-700'}>
-                        {value ? 'Pass' : 'Review'}
-                      </span>
+                {reviewError ? (
+                  <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-700">
+                    {reviewError}
+                  </div>
+                ) : null}
+                {reviewResult ? (
+                  <>
+                    <div className="mt-4 space-y-2">
+                      {Object.entries(reviewResult.scores).map(([key, value]) => (
+                        <div key={key} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                          <span>{key.replace(/_/g, ' ').replace(/^./, (letter) => letter.toUpperCase())}</span>
+                          <span className="font-semibold text-slate-900">{value}/10</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
-                  {liveAssignment.review.highlights.map((item) => (
-                    <li key={item} className="rounded-2xl border border-slate-200 px-3 py-2.5">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Issues</p>
+                      <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
+                        {reviewResult.issues.map((item) => (
+                          <li key={item} className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2.5">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Suggestions</p>
+                      <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600">
+                        {reviewResult.suggestions.map((item) => (
+                          <li key={item} className="rounded-2xl border border-slate-200 px-3 py-2.5">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-4 rounded-2xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                    No review has been run yet.
+                  </div>
+                )}
               </div>
             </aside>
           </div>

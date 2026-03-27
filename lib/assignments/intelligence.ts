@@ -7,7 +7,6 @@ import {
   type ParsedAssignmentSeed,
   type ReviewResult,
   type SectionAnchor,
-  type SectionGuidance,
 } from '@/lib/assignments/types'
 
 const sentenceSplitRegex = /(?<=[.!?])\s+/g
@@ -292,7 +291,7 @@ export const generateSectionGuidance = (
   section: AssignmentSection,
   seed: string,
   currentText: string
-): SectionGuidance => {
+) => {
   const guidance = getGuidanceSeed(section, seed)
   const lowerText = currentText.toLowerCase()
 

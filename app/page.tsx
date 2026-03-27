@@ -43,7 +43,7 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative px-8 pt-40 pb-32 overflow-hidden">
+      <section className="relative px-8 pt-40 pb-32 min-h-screen coverflow-hidden">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="z-10">
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary-container text-on-primary-container text-xs font-bold tracking-widest uppercase mb-6">Elevate Your Academics</span>
@@ -54,7 +54,7 @@ export default function HomePage() {
               The scholarly catalyst for organizing assignments, tracking progress, and reaching your potential. Transform academic pressure into prestige.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link href="/login" className="cursor-pointer bg-primary text-on-primary px-8 py-4 rounded-full text-lg font-bold hover:bg-primary-dim transition-all active:scale-95 shadow-xl shadow-primary/20">Get Started for Free</Link>
+              <Link href="/login" className=" cursor-pointer bg-primary text-on-primary px-8 py-4 rounded-full text-lg font-bold hover:bg-primary-dim transition-all active:scale-95 shadow-xl shadow-primary/20">Get Started for Free</Link>
               <button className="cursor-pointer bg-surface-container-high text-on-surface px-8 py-4 rounded-full text-lg font-bold hover:bg-surface-container-highest transition-all active:scale-95 flex items-center gap-2">
                 <IoPlayCircleOutline className='text-3xl' />
                 View Demo
@@ -72,7 +72,7 @@ export default function HomePage() {
                   <img className="w-full h-full object-cover" data-alt="smiling young woman sitting in a modern study lounge" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4Fax36-DdBdy3ORJsKsq-VV3fp-bE_aQ-emWLOJqShPe35gZ2uE8l4EwebvqNf419_zCj7nla_XSu4OixSBNRQHWI5YYIMln05-a2L90gvAWfSHYm6sWa2dG4lvtvjcnIOq4YbvPoMhmCRtl9R9AFUypWCIihPCQ3I0fetGRev_vUmwNFfntJo6KQQSWQ6S9Qpfp8s9OxAo8fIthaBvTQl2flqt2tkpig5poedU0Y_Nf5AkhiRhO-TiS1ymPrrP9BS5077Ch_LBMY" />
                 </div>
               </div>
-              <p className="text-sm text-on-surface-variant font-medium">Joined by <span className="text-primary font-bold">12,000+</span> elite scholars</p>
+              {/* <p className="text-sm text-on-surface-variant font-medium">Joined by <span className="text-primary font-bold">12,000+</span> elite scholars</p> */}
             </div>
           </div>
           <div className="relative">
@@ -81,7 +81,7 @@ export default function HomePage() {
               <img className="w-full h-full object-cover aspect-[4/3]" data-alt="high-angle artistic shot of a clean workspace with laptop, notebook, and green tea in soft morning light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEBAcm45kxPC-VNwyycJFhMoG4M1k1lwqgE7aa0RBUvQtpDG2CwGNJTg8-k3hm1azXBi2SbwQwrbDWVEDD5T0lNVkXUG7J9o0c5pLxHorezT8L4l3Cak-w1dx6AMvgSzCW9b3JDxCDrFj3H2H0LoKipWxgpUf98PP1O6IZ8EYE5m2MqC-ZfQA6NYuX7vtcoudaZ94vT11YaulmdhXU_mrN21QrAFGPqjtc0DhiiywkqKUX4PlRRpKnhANzy1itkEE3ZhFqVqFrPaJ2" />
               <div className="absolute bottom-6 left-6 right-6 p-6 glass-header rounded-xl border border-white/20">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="font-editorial text-lg">Active Session: Thesis Prep</span>
+                  <span className="font-editorial text-lg">Active Session: Assignment Prep</span>
                   <span className="bg-primary text-on-primary text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Deep Work</span>
                 </div>
                 <div className="w-full bg-white/90 h-2 rounded-full overflow-hidden">
@@ -208,7 +208,7 @@ export default function HomePage() {
               <Link href="/login" className="bg-on-primary text-primary px-10 py-5 rounded-full text-xl font-bold hover:bg-white transition-all shadow-xl active:scale-95">Start For Free</Link>
               {/* <Link href="/pricing" className="bg-primary-dim/30 backdrop-blur-md text-on-primary border border-on-primary/20 px-10 py-5 rounded-full text-xl font-bold hover:bg-primary-dim/50 transition-all active:scale-95">Compare Plans</Link> */}
             </div>
-            <p className="mt-8 text-on-primary/60 text-sm">No credit card required. Cancel anytime.</p>
+            {/* <p className="mt-8 text-on-primary/60 text-sm">No credit card required. Cancel anytime.</p> */}
           </div>
         </div>
       </section>

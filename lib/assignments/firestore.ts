@@ -3,7 +3,14 @@
 import { addDoc, collection, doc, getDoc, getDocs, query, updateDoc, where, } from 'firebase/firestore'
 import { db } from '@/lib/Database/Firebase'
 import { buildAssignmentStateFromSeed, calculateProgress, createSeededAssignmentState, deriveAssignmentTitle, evaluateReview, } from '@/lib/assignments/intelligence'
-import type { Assignment, AssignmentChecklistItem, AssignmentReference, CreateAssignmentInput } from '@/lib/assignments/types'
+import type {
+  Assignment,
+  AssignmentChecklistItem,
+  AssignmentReference,
+  CreateAssignmentInput,
+  ResearchGuidanceResponse,
+  SectionGuidance,
+} from '@/lib/assignments/types'
 
 const assignmentsCollection = collection(db, 'assignments')
 
@@ -74,6 +81,86 @@ export const updateAssignment = async (
     updatedAt: new Date().toISOString(),
   })
 }
+
+export const updateAssignmentOutline = async (
+  assignmentId: string,
+  outline: Assignment['outline']
+) => {
+  await updateDoc(doc(db, 'assignments', assignmentId), {
+    outline,
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+export const updateAssignmentOutlineSection = async ({
+  assignmentId,
+  outline,
+  sectionId,
+  updates,
+  extraUpdates,
+}: {
+  assignmentId: string
+  outline: Assignment['outline']
+  sectionId: string
+  updates: Partial<Assignment['outline'][number]>
+  extraUpdates?: Partial<Assignment>
+}) => {
+  const nextOutline = outline.map((section) =>
+    section.id === sectionId ? { ...section, ...updates } : section
+  )
+
+  await updateDoc(doc(db, 'assignments', assignmentId), {
+    outline: nextOutline,
+    ...(extraUpdates ?? {}),
+    updatedAt: new Date().toISOString(),
+  })
+
+  return nextOutline
+}
+
+export const persistAssignmentSectionIntelligence = async ({
+  assignmentId,
+  outline,
+  sectionId,
+  guidance,
+  researchGuidance,
+}: {
+  assignmentId: string
+  outline: Assignment['outline']
+  sectionId: string
+  guidance?: SectionGuidance
+  researchGuidance?: ResearchGuidanceResponse
+}) =>
+  updateAssignmentOutlineSection({
+    assignmentId,
+    outline,
+    sectionId,
+    updates: {
+      ...(guidance ? { guidance } : {}),
+      ...(researchGuidance ? { researchGuidance } : {}),
+    },
+  })
+
+export const renameAssignmentOutlineSection = async ({
+  assignmentId,
+  outline,
+  sectionId,
+  title,
+  extraUpdates,
+}: {
+  assignmentId: string
+  outline: Assignment['outline']
+  sectionId: string
+  title: string
+  extraUpdates?: Partial<Assignment>
+}) =>
+  updateAssignmentOutlineSection({
+    assignmentId,
+    outline,
+    sectionId,
+    updates: { title },
+    extraUpdates,
+  })
 
 export const recomputeAssignmentState = ({
   assignment,

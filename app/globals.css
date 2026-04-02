@@ -61,3 +61,33 @@
 .hero-gradient {
   @apply bg-gradient-to-br from-primary to-primary-dim;
 }
+
+.assignment-sidebar-scroll {
+  scrollbar-width: none;
+  scrollbar-color: rgba(89, 92, 93, 0.45) transparent;
+}
+
+.assignment-sidebar-scroll:hover {
+  scrollbar-width: thin;
+}
+
+.assignment-sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+}
+
+.assignment-sidebar-scroll:hover::-webkit-scrollbar {
+  width: 8px;
+}
+
+.assignment-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.assignment-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(89, 92, 93, 0.4);
+  border-radius: 9999px;
+}
+
+.assignment-sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(89, 92, 93, 0.55);
+}

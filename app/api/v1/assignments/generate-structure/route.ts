@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import type { AssignmentAnalysis, AssignmentStructureResponse } from '@/lib/assignments/types'
 
-const GEMINI_MODEL = 'gemini-2.5-flash'
+const GEMINI_MODEL = 'gemini-2.5-flash-lite'
 
 const cleanJson = (value: string) =>
   value

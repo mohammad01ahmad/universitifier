@@ -11,6 +11,8 @@ export type AssignmentSection = {
   title: string
   description: string
   targetWords: number
+  guidance?: SectionGuidance
+  researchGuidance?: ResearchGuidanceResponse
 }
 
 export type AssignmentStructureSection = {

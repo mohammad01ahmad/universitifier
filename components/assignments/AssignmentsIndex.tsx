@@ -139,7 +139,7 @@ export function AssignmentsIndex() {
             </Button>
           </div>
         ) : (
-          <section className="space-y-4">
+          <section className="space-y-4 bg-white rounded-[2rem] p-4">
             {assignments.map((assignment) => {
               const urgency = daysUntil(assignment.deadline)
               const urgencyLabel =
@@ -179,7 +179,6 @@ export function AssignmentsIndex() {
                           {formatDate(assignment.deadline)}
                         </span>
                         <span>{assignment.wordCountTarget} words</span>
-                        <span>{assignment.references.length} references</span>
                         <span className="inline-flex items-center gap-1.5">
                           <FolderOpen className="size-4" />
                           {assignment.upload.fileName}

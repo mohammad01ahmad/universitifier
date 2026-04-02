@@ -3,13 +3,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, CheckCircle2, ClipboardCheck, FileSearch, GraduationCap, LibraryBig, Loader2, Sparkles, WandSparkles } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ClipboardCheck, FileSearch, GraduationCap, LibraryBig, Loader2, PencilLine, Sparkles, WandSparkles, X } from 'lucide-react'
 import type { Editor as TinyMCEEditorInstance } from 'tinymce'
 import { Button } from '@/components/ui/button'
 import { ReferenceGenerator } from '@/components/ReferenceGenerator'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 import { applyAssistAction, computeSectionAnchors, extractSectionText, getActiveSectionId } from '@/lib/assignments/intelligence'
-import { fetchAssignmentById, recomputeAssignmentState, updateAssignment, } from '@/lib/assignments/firestore'
+import { fetchAssignmentById, persistAssignmentSectionIntelligence, recomputeAssignmentState, renameAssignmentOutlineSection, updateAssignment } from '@/lib/assignments/firestore'
 import { fetchAssignmentReview, fetchResearchGuidance, fetchSectionGuidance } from '@/lib/assignments/parser'
 import type { Assignment, AssignmentReference, AssignmentReviewResponse, AssistAction, ResearchGuidanceResponse, SectionGuidance } from '@/lib/assignments/types'
 import AssignmentHeader from './AssignmentHeader'
@@ -111,6 +111,27 @@ const getSelectionOffsets = (editor: TinyMCEEditorInstance) => {
   }
 }
 
+const replaceSectionTitle = ({
+  document,
+  anchors,
+  sectionId,
+  nextTitle,
+}: {
+  document: string
+  anchors: Assignment['sectionAnchors']
+  sectionId: string
+  nextTitle: string
+}) => {
+  const anchor = anchors.find((item) => item.sectionId === sectionId)
+  if (!anchor) return document
+
+  const currentSectionText = document.slice(anchor.start, anchor.end)
+  const normalizedSectionText = currentSectionText.replace(/^\s+/, '')
+  const nextSectionText = normalizedSectionText.replace(/^[^\n]+/, nextTitle)
+
+  return `${document.slice(0, anchor.start)}${nextSectionText}${document.slice(anchor.end)}`
+}
+
 const buildSmartChecklist = ({
   assignment,
   document,
@@ -160,6 +181,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
   const router = useRouter()
   const { user, loading } = useAuthenticatedUser()
   const editorRef = useRef<TinyMCEEditorInstance | null>(null)
+  const pendingSectionJumpRef = useRef<string | null>(null)
 
   const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [editorContent, setEditorContent] = useState('<p></p>')
@@ -175,8 +197,8 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
   const [reviewResult, setReviewResult] = useState<AssignmentReviewResponse | null>(null)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [reviewError, setReviewError] = useState('')
-  const sectionGuidanceCache = useRef(new Map<string, SectionGuidance>())
-  const researchGuidanceCache = useRef(new Map<string, ResearchGuidanceResponse>())
+  const [editingSectionId, setEditingSectionId] = useState('')
+  const [editingSectionTitle, setEditingSectionTitle] = useState('')
 
   useEffect(() => {
     if (!loading && !user) {
@@ -327,16 +349,13 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
   }, [assignment, documentText, editorContent])
 
   useEffect(() => {
-    if (!liveAssignment || !activeSection) return
+    if (!assignment || !liveAssignment || !activeSection) return
 
-    const cacheKey = `${liveAssignment.id}:${activeSection.id}:${activeSectionText}`
-    const cachedSectionGuidance = sectionGuidanceCache.current.get(cacheKey)
-    const cachedResearchGuidance = researchGuidanceCache.current.get(cacheKey)
-
-    if (cachedSectionGuidance && cachedResearchGuidance) {
-      setSectionGuidance(cachedSectionGuidance)
-      setResearchGuidance(cachedResearchGuidance)
+    if (activeSection.guidance && activeSection.researchGuidance) {
+      setSectionGuidance(activeSection.guidance)
+      setResearchGuidance(activeSection.researchGuidance)
       setGuidanceError('')
+      setGuidanceLoading(false)
       return
     }
 
@@ -347,22 +366,37 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
       setGuidanceError('')
 
       try {
-        const [nextSectionGuidance, nextResearchGuidance] = await Promise.all([
-          fetchSectionGuidance({
-            sectionTitle: activeSection.title,
-            assignmentContext,
-            currentText: activeSectionText,
-          }),
-          fetchResearchGuidance({
-            section: activeSection.title,
-            assignmentContext,
-          }),
-        ])
+        const nextSectionGuidance = activeSection.guidance ?? await fetchSectionGuidance({
+          sectionTitle: activeSection.title,
+          assignmentContext,
+          currentText: activeSectionText,
+        })
+        const nextResearchGuidance = activeSection.researchGuidance ?? await fetchResearchGuidance({
+          section: activeSection.title,
+          assignmentContext,
+        })
 
         if (cancelled) return
 
-        sectionGuidanceCache.current.set(cacheKey, nextSectionGuidance)
-        researchGuidanceCache.current.set(cacheKey, nextResearchGuidance)
+        const nextOutline = await persistAssignmentSectionIntelligence({
+          assignmentId: liveAssignment.id,
+          outline: assignment.outline,
+          sectionId: activeSection.id,
+          ...(activeSection.guidance ? {} : { guidance: nextSectionGuidance }),
+          ...(activeSection.researchGuidance ? {} : { researchGuidance: nextResearchGuidance }),
+        })
+
+        if (cancelled) return
+
+        setAssignment((current) =>
+          current
+            ? {
+              ...current,
+              outline: nextOutline,
+              updatedAt: new Date().toISOString(),
+            }
+            : current
+        )
         setSectionGuidance(nextSectionGuidance)
         setResearchGuidance(nextResearchGuidance)
       } catch (loadError) {
@@ -385,7 +419,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     return () => {
       cancelled = true
     }
-  }, [activeSection, activeSectionText, assignmentContext, liveAssignment])
+  }, [activeSection, activeSectionText, assignment, assignmentContext, liveAssignment])
 
   const syncChecklist = async (nextChecklist: Assignment['checklist']) => {
     if (!assignment || !liveAssignment) return
@@ -472,8 +506,14 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     const body = editorRef.current.getBody?.()
     if (!section || !body) return
 
+    pendingSectionJumpRef.current = sectionId
+    setActiveSectionId(sectionId)
+
     const match = findTextNodeContaining(body, section.title)
-    if (!match) return
+    if (!match) {
+      pendingSectionJumpRef.current = null
+      return
+    }
 
     const range = body.ownerDocument.createRange()
     range.setStart(match.node, match.startIndex)
@@ -481,11 +521,116 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     editorRef.current.selection.setRng(range)
     editorRef.current.focus()
     match.node.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    setActiveSectionId(sectionId)
+    window.setTimeout(() => {
+      if (pendingSectionJumpRef.current === sectionId) {
+        pendingSectionJumpRef.current = null
+      }
+    }, 150)
+  }
+
+  const handleRenameSection = async (sectionId: string) => {
+    if (!assignment || !liveAssignment) return
+
+    const nextTitle = editingSectionTitle.trim()
+    if (!nextTitle) return
+
+    const currentSection = assignment.outline.find((section) => section.id === sectionId)
+    if (!currentSection || currentSection.title === nextTitle) {
+      setEditingSectionId('')
+      setEditingSectionTitle('')
+      return
+    }
+
+    const nextDocumentText = replaceSectionTitle({
+      document: documentText,
+      anchors: liveAssignment.sectionAnchors,
+      sectionId,
+      nextTitle,
+    })
+    const nextEditorContent = plainTextToHtml(nextDocumentText)
+    const nextOutline = assignment.outline.map((section) =>
+      section.id === sectionId ? { ...section, title: nextTitle } : section
+    )
+    const nextAnchors = computeSectionAnchors(nextDocumentText, nextOutline)
+    const previewReview = recomputeAssignmentState({
+      assignment: {
+        ...assignment,
+        outline: nextOutline,
+      },
+      document: nextDocumentText,
+      sectionAnchors: nextAnchors,
+    }).review
+    const nextChecklist = buildSmartChecklist({
+      assignment: {
+        ...assignment,
+        outline: nextOutline,
+      },
+      document: nextDocumentText,
+      sectionAnchors: nextAnchors,
+      references: assignment.references,
+      review: previewReview,
+    })
+    const derived = recomputeAssignmentState({
+      assignment: {
+        ...assignment,
+        outline: nextOutline,
+      },
+      document: nextDocumentText,
+      checklist: nextChecklist,
+      sectionAnchors: nextAnchors,
+    })
+
+    setEditorContent(nextEditorContent)
+    setAssignment((current) =>
+      current
+        ? {
+          ...current,
+          outline: nextOutline,
+          document: nextEditorContent,
+          sectionAnchors: nextAnchors,
+          checklist: nextChecklist,
+          review: derived.review,
+          progressPercent: derived.progressPercent,
+          status: derived.status,
+          updatedAt: new Date().toISOString(),
+        }
+        : current
+    )
+    setSectionGuidance(currentSection.guidance ?? null)
+    setResearchGuidance(currentSection.researchGuidance ?? null)
+    setEditingSectionId('')
+    setEditingSectionTitle('')
+
+    try {
+      await renameAssignmentOutlineSection({
+        assignmentId: assignment.id,
+        outline: assignment.outline,
+        sectionId,
+        title: nextTitle,
+        extraUpdates: {
+          document: nextEditorContent,
+          sectionAnchors: nextAnchors,
+          checklist: nextChecklist,
+          review: derived.review,
+          progressPercent: derived.progressPercent,
+          status: derived.status,
+        },
+      })
+    } catch (renameError) {
+      console.error(renameError)
+      setGuidanceError(
+        renameError instanceof Error ? renameError.message : 'We could not rename this section right now.'
+      )
+    }
   }
 
   const handleEditorSelectionChange = (editor: TinyMCEEditorInstance) => {
     if (!liveAssignment) return
+
+    if (pendingSectionJumpRef.current) {
+      setActiveSectionId(pendingSectionJumpRef.current)
+      return
+    }
 
     const { start } = getSelectionOffsets(editor)
     setActiveSectionId((current) =>
@@ -493,6 +638,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     )
   }
 
+  // Later on
   const handleAssistAction = (action: AssistAction) => {
     if (!liveAssignment || !editorRef.current || !activeSection) return
 
@@ -570,6 +716,22 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     URL.revokeObjectURL(url)
   }
 
+  const handleRenameAssignmentTitle = async (title: string) => {
+    if (!assignment) return
+
+    setAssignment((current) =>
+      current
+        ? {
+          ...current,
+          title,
+          updatedAt: new Date().toISOString(),
+        }
+        : current
+    )
+
+    await updateAssignment(assignment.id, { title })
+  }
+
   if (loading || (user && loadingAssignment)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f5ef]">
@@ -609,33 +771,101 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
         saveState={saveState}
         handleCopyExport={handleCopyExport}
         handleDownload={handleDownload}
+        onRenameTitle={handleRenameAssignmentTitle}
       />
 
-      <main className="min-h-[calc(100svh-120px)] bg-[#f7f5ef] pb-12 text-slate-950">
+      <main className="min-h-[calc(100svh-120px)] bg-[#f7f5ef] pb-6 text-slate-950">
         <div className="px-3 pt-4 sm:px-4 lg:px-5">
           <div className="mx-auto grid max-w-[1800px] gap-5 xl:grid-cols-[20rem_minmax(0,1fr)_23rem]">
 
             {/* Left side bar  */}
-            <aside className="space-y-4 xl:sticky xl:top-[188px] xl:self-start">
+            <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-[calc(100svh-145px)] xl:self-start xl:overflow-y-auto xl:pr-2 assignment-sidebar-scroll">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Outline & Expectations</p>
+
+              {/* Outline */}
               <section className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Outline</p>
                 <div className="mt-4 space-y-2">
                   {assignment.outline.map((section) => (
-                    <button
+                    <div
                       key={section.id}
-                      type="button"
-                      onClick={() => jumpToSection(section.id)}
-                      className={`flex w-full items-start rounded-2xl px-3 py-3 text-left text-sm transition ${activeSectionId === section.id
-                        ? 'bg-emerald-50 font-semibold text-emerald-700'
+                      className={`rounded-2xl px-3 py-3 text-sm transition ${activeSectionId === section.id
+                        ? 'bg-emerald-50 text-emerald-700'
                         : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                         }`}
                     >
-                      {section.title}
-                    </button>
+                      {editingSectionId === section.id ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editingSectionTitle}
+                            onChange={(event) => setEditingSectionTitle(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault()
+                                void handleRenameSection(section.id)
+                              }
+                              if (event.key === 'Escape') {
+                                setEditingSectionId('')
+                                setEditingSectionTitle('')
+                              }
+                            }}
+                            className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-500"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => void handleRenameSection(section.id)}
+                              className="h-8 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setEditingSectionId('')
+                                setEditingSectionTitle('')
+                              }}
+                              className="h-8 px-3"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => jumpToSection(section.id)}
+                            className={`flex-1 text-left ${activeSectionId === section.id ? 'font-semibold' : ''}`}
+                          >
+                            {section.title}
+                          </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 shrink-0 text-slate-500 hover:text-slate-900"
+                            onClick={() => {
+                              setEditingSectionId(section.id)
+                              setEditingSectionTitle(section.title)
+                            }}
+                            aria-label={`Rename ${section.title}`}
+                          >
+                            <PencilLine className="size-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </section>
 
+              {/* Assignment File */}
               <section className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-600 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   <FileSearch className="size-3.5 text-emerald-600" />
@@ -649,6 +879,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                 </div>
               </section>
 
+              {/* Completion */}
               <section className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 shadow-sm">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   <ClipboardCheck className="size-3.5 text-emerald-600" />
@@ -686,6 +917,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                 </div>
               </section>
 
+              {/* Expectations */}
               <section className="rounded-[1.35rem] border border-slate-200 bg-white px-4 py-4 shadow-sm">
                 <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                   <GraduationCap className="size-3.5 text-emerald-600" />
@@ -705,7 +937,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
               </section>
             </aside>
 
-            {/* need to make the height full */}
+            {/* Editor */}
             <section className="min-w-0 flex items-start justify-center">
               <div className="w-full max-w-[800px] border border-slate-200 bg-[#eef2f3] shadow-sm">
                 <div className="px-2 py-2">
@@ -776,7 +1008,10 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
               </div>
             </section>
 
-            <aside className="space-y-4 xl:sticky xl:top-[188px] xl:self-start">
+            {/* Right side bar  */}
+            <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-[calc(100svh-145px)] xl:self-start xl:overflow-y-auto xl:pr-2 assignment-sidebar-scroll">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">AI Assistant</p>
+              {/* Section Intelligence */}
               <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
                   <Sparkles className="size-4 text-emerald-600" />
@@ -828,7 +1063,8 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                 ) : null}
               </div>
 
-              <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
+              {/* AI Assist */}
+              {/* <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
                   <WandSparkles className="size-4 text-emerald-600" />
                   AI Assist
@@ -848,8 +1084,9 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                     {assistMessage}
                   </div>
                 ) : null}
-              </div>
+              </div> */}
 
+              {/* Research Guidance */}
               <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
                   <LibraryBig className="size-4 text-emerald-600" />
@@ -896,6 +1133,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                 ) : null}
               </div>
 
+
               <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <ReferenceGenerator
                   embedded
@@ -906,6 +1144,7 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
                 />
               </div>
 
+              {/* Final Review Mode */}
               <div className="rounded-[1.7rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
                   <CheckCircle2 className="size-4 text-emerald-600" />

@@ -125,10 +125,10 @@ export const generateBreakdown = (seed: string): AssignmentBreakdown => {
       requirements.length > 0
         ? requirements
         : [
-            'Address the core question directly.',
-            'Use evidence to support each main point.',
-            'Finish with a concise conclusion that answers the assignment task.',
-          ],
+          'Address the core question directly.',
+          'Use evidence to support each main point.',
+          'Finish with a concise conclusion that answers the assignment task.',
+        ],
     deliverable: extractDeliverable(seed),
     hiddenExpectations: hiddenExpectations.slice(0, 4),
   }

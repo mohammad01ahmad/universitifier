@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import type { AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
 
-const GEMINI_MODEL = 'gemini-2.5-flash'
+const GEMINI_MODEL = 'gemini-2.5-flash-lite'
 const MAX_UPLOAD_SIZE_BYTES = 700 * 1024
 
 const cleanJson = (value: string) =>

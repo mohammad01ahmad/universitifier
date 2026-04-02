@@ -9,7 +9,7 @@ import { CreateAssignmentModal } from '@/components/assignments/CreateAssignment
 import { createAssignment, fetchAssignmentsForUser } from '@/lib/assignments/firestore'
 import type { Assignment, AssignmentAnalysis, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
-import { DashboardHeader } from './DashboardHeader';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('en', {
@@ -275,23 +275,6 @@ export function AssignmentDashboard() {
               </div>
             )}
           </div>
-
-          <aside className="space-y-5">
-            <div className="rounded-[2rem] border border-slate-200 bg-[#122118] p-6 text-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-200">
-                Workflow
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold tracking-tight">
-                Create. Break down. Draft. Review. Export.
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-emerald-50/80">
-                The workspace keeps the assignment context on the left, the draft in the center, and section-aware help on the right so you never lose context.
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-            </div>
-          </aside>
         </section>
       </div>
 

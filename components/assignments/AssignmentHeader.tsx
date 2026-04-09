@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button'
 import { Assignment } from '@/lib/assignments/types'
 import { Copy, Download } from 'lucide-react'
+import { GraduationCap } from 'lucide-react'
 
 const topMenus = ['File', 'Edit', 'Insert', 'Format', 'Help']
 
@@ -71,10 +72,10 @@ function AssignmentHeader({ assignment, documentText, saveState, handleCopyExpor
 
         {/* Top Row */}
         <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700/80">
-              Assignment Workspace
-            </p>
+          <div className="flex min-w-0 flex-1">
+            <div className="flex items-center mr-2">
+              <GraduationCap className="size-7 text-emerald-600" />
+            </div>
             {isEditingTitle ? (
               <div className="w-full">
                 <input
@@ -99,7 +100,7 @@ function AssignmentHeader({ assignment, documentText, saveState, handleCopyExpor
                       setTitleError('')
                     }
                   }}
-                  className="w-full rounded-lg border-2 border-emerald-500 bg-white px-2 py-0 text-xl font-semibold tracking-tight text-slate-900 outline-none"
+                  className="rounded-lg border-2 border-emerald-500 bg-white px-2 py-0 text-xl font-semibold tracking-tight text-slate-900 outline-none"
                   style={{ lineHeight: '1.75rem' }} // Force matching height
                 />
                 {titleError && <p className="mt-1 text-xs text-rose-600">{titleError}</p>}
@@ -147,7 +148,7 @@ function AssignmentHeader({ assignment, documentText, saveState, handleCopyExpor
               </DropdownMenuContent>
             </DropdownMenu>
           ))}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center mr-2">
             <span className="text-[11px] text-slate-400 italic">
               {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'All changes saved' : 'Autosave ready'}
             </span>

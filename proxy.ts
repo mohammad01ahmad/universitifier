@@ -1,29 +1,34 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { adminAuth } from './lib/Database/firebaseAdmin';
 
-export async function proxy(request: NextRequest) {
+export default function proxy(request: NextRequest) {
     const session = request.cookies.get('session')?.value;
     const { pathname } = request.nextUrl;
 
-    // 1. Define protected routes
-    const isProfile = pathname.startsWith('/profile');
+    // 1. Define protected routes (require authentication)
+    const protectedRoutes = ['/profile'];
+    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-    // 2. Redirect to login if accessing protected route without session
-    if (!session && isProfile) {
+    // 2. Define public routes (accessible without authentication)
+    const publicRoutes = ['/login', '/signup', '/'];
+
+    // 3. Redirect unauthenticated users trying to access protected routes
+    if (!session && isProtectedRoute) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // 3. Redirect to dashboard if logged-in user tries to access login/signup
+    // 4. Redirect authenticated users away from auth pages
     if (session && (pathname === '/login' || pathname === '/signup')) {
         return NextResponse.redirect(new URL('/profile', request.url));
     }
 
-    // 4. Redirect to dashboard if logged-in user tries to access root page
+    // 5. Redirect authenticated users from homepage to dashboard
     if (session && pathname === '/') {
         return NextResponse.redirect(new URL('/profile', request.url));
     }
 
-
+    // 6. Allow all other requests (public routes)
     return NextResponse.next();
 }
 

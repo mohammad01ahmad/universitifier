@@ -12,15 +12,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "UNAUTHORIZED REQUEST!" }, { status: 403 });
         }
 
-        // Set session expiration (5 days)
-        const expiresIn = 60 * 60 * 24 * 5 * 1000;
+        // Set session expiration (5 days in SECONDS for Firebase)
+        const expiresInSeconds = 60 * 60 * 24 * 5;
 
-        // Create the session cookie using Firebase Admin
-        const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+        // Create the session cookie using Firebase Admin (expects seconds)
+        const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+            expiresIn: expiresInSeconds * 1000
+        });
 
-        // Set the cookie in the browser
+        // Set the cookie in the browser (maxAge expects milliseconds)
         cookieStore.set("session", sessionCookie, {
-            maxAge: expiresIn,
+            maxAge: expiresInSeconds,
             httpOnly: true, // Prevents XSS attacks
             secure: process.env.NODE_ENV === "production", // Only over HTTPS in prod
             sameSite: "strict",
@@ -58,7 +60,7 @@ export async function POST(request: NextRequest) {
             redirectTo: isNewUser ? '/complete-profile' : '/profile'
         }, { status: 200 });
 
-    } catch {
-        return Response.json({ error: "Login API Error" }, { status: 500 });
+    } catch (error) {
+        return Response.json({ error: "Login API Error", details: error }, { status: 500 });
     }
 }

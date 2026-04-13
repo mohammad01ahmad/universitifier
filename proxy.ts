@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminAuth } from './lib/Database/firebaseAdmin';
 
-export default function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
     const session = request.cookies.get('session')?.value;
     const { pathname } = request.nextUrl;
 
@@ -20,12 +20,22 @@ export default function proxy(request: NextRequest) {
 
     // 4. Redirect authenticated users away from auth pages
     if (session && (pathname === '/login' || pathname === '/signup')) {
-        return NextResponse.redirect(new URL('/profile', request.url));
+        try {
+            await adminAuth.verifySessionCookie(session);
+            return NextResponse.redirect(new URL('/profile', request.url));
+        } catch (error) {
+            return NextResponse.next();
+        }
     }
 
     // 5. Redirect authenticated users from homepage to dashboard
     if (session && pathname === '/') {
-        return NextResponse.redirect(new URL('/profile', request.url));
+        try {
+            await adminAuth.verifySessionCookie(session);
+            return NextResponse.redirect(new URL('/profile', request.url));
+        } catch (error) {
+            return NextResponse.next();
+        }
     }
 
     // 6. Allow all other requests (public routes)

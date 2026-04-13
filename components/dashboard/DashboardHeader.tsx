@@ -1,5 +1,5 @@
 import { useAuth } from '@/lib/authContext'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { FaChevronDown } from 'react-icons/fa'
 import { PiSignOutBold } from 'react-icons/pi'
@@ -9,13 +9,11 @@ import { FaUser } from "react-icons/fa";
 
 export function DashboardHeader() {
     const { user, logout } = useAuth()
-    const router = useRouter()
     const pathname = usePathname()
 
     const handleLogout = async () => {
         try {
             await logout()
-            router.push('/login')
         } catch (error) {
             console.error('Error signing out:', error)
         }

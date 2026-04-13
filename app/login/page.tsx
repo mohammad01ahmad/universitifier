@@ -1,21 +1,17 @@
 'use client'
 
-import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { auth } from '@/lib/Database/Firebase'
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { FcGoogle } from 'react-icons/fc'
-import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { db } from '@/lib/Database/Firebase'
 import { FirebaseError } from 'firebase/app'
-import { Button } from "@/components/ui/button"
 import { setCsrfToken } from '@/lib/security/csrfProtection'
 import { IoSchoolSharp } from "react-icons/io5";
 import { FaArrowLeft } from "react-icons/fa";
 import { Loader2 } from 'lucide-react';
 
-// TO DO: Check if data is in firestore is updated before or after API call. OR inside the API call.
+// TO DO: Error in the sign in function, not signing in properly.
 
 function Page() {
     const router = useRouter()
@@ -23,52 +19,47 @@ function Page() {
 
     const [formError, setFormError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [email, setEmail] = useState('');
-    const [csrfToken, setCsrfTokenState] = useState<string>('');
-
-    // csrfProtection
-    useEffect(() => {
-        const initCsrf = async () => {
-            const token = await setCsrfToken();
-            setCsrfTokenState(token);
-        };
-        initCsrf();
-    }, []);
 
     const handleGoogleSignIn = async () => {
         setIsLoading(true);
         try {
+            // 1. Sign in on the client
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
+
+            // 2. Get ID token from Firebase
             const idToken = await user.getIdToken();
 
+            // 3. Get csrf Token for security
+            const csrfToken = await setCsrfToken();
+
+            // 4. CALL YOUR API (This sets the HTTP-only Cookie)
             const res = await fetch('/api/v1/user/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken, // Must match what validateCsrf expects
+                    'X-CSRF-Token': csrfToken,
                 },
                 body: JSON.stringify({ idToken }),
             });
 
             if (!res.ok) {
-                setFormError('Failed to create session');
-                return Response.json({ error: "Failed to create session" }, { status: 401 });
+                setFormError('Failed to sign in');
+                return;
             }
 
             const data = await res.json();
-            setIsLoading(false);
-            router.push(data.redirectTo);
 
+            // 4. Redirect to the correct page
+            router.push(data.redirectTo);
+            console.log("login success")
         } catch (error) {
             console.error('Error signing in with Google:', error);
             setIsLoading(false);
             if (error instanceof FirebaseError && error.code === 'auth/popup-closed-by-user') {
                 setFormError('Sign-in cancelled')
-                return Response.json({ error: "Sign-in cancelled" }, { status: 401 });
             } else {
                 setFormError('Failed to sign in with Google. Please try again.')
-                return Response.json({ error: "Failed to sign in with Google. Please try again." }, { status: 401 });
             }
         }
     };
@@ -83,8 +74,7 @@ function Page() {
 
     return (
         <section className="bg-surface text-on-surface font-body min-h-screen flex flex-col overflow-x-hidden">
-            {/* <!-- TopAppBar - Suppressed per Shell Visibility Rule for Transactional Pages --> */}
-            {/* <!-- However, the prompt explicitly asks for TopAppBar and Footer. Following Prompt instructions as priority override. --> */}
+            {/* <!-- TopAppBar --> */}
             <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent">
                 <div className="flex justify-between items-center w-full px-8 py-6 max-w-7xl mx-auto">
                     <div className="text-2xl font-bold text-emerald-900 font-headline tracking-tight">Universitifier</div>
@@ -113,14 +103,30 @@ function Page() {
                         <p className="text-on-surface-variant text-lg mb-10 leading-relaxed font-body">
                             Your digital sanctuary for academic excellence and curated focus.
                         </p>
+
+                        {/* Error message */}
+                        {formError && (
+                            <div className="mb-6 p-4 bg-error/10 text-error rounded-lg text-sm">
+                                {formError}
+                            </div>
+                        )}
+
                         {/* <!-- Sign in with Google Button --> */}
-                        <button onClick={handleGoogleSignIn} className="cursor-pointer w-full flex items-center justify-center gap-4 bg-surface-container-lowest border border-outline-variant/20 hover:bg-surface-container-low text-on-surface font-medium py-4 px-6 rounded-full transition-all duration-200 group active:scale-[0.98]">
+                        <button
+                            onClick={handleGoogleSignIn}
+                            disabled={isLoading}
+                            className="cursor-pointer w-full flex items-center justify-center gap-4 bg-surface-container-lowest border border-outline-variant/20 hover:bg-surface-container-low text-on-surface font-medium py-4 px-6 rounded-full transition-all duration-200 group active:scale-[0.98] disabled:opacity-50"
+                        >
                             <FcGoogle className='text-2xl' />
                             <span className="text-base">Sign in with Google</span>
                         </button>
 
                         {/* Back button with arrow  */}
-                        <button onClick={() => router.back()} className="mt-8 cursor-pointer w-full flex items-center justify-center gap-4 bg-surface-container-lowest text-on-surface font-medium py-4 px-6 rounded-full transition-all duration-200 group active:scale-[0.98]">
+                        <button
+                            onClick={() => router.back()}
+                            disabled={isLoading}
+                            className="mt-8 cursor-pointer w-full flex items-center justify-center gap-4 bg-surface-container-lowest text-on-surface font-medium py-4 px-6 rounded-full transition-all duration-200 group active:scale-[0.98] disabled:opacity-50"
+                        >
                             <FaArrowLeft className='text-md' />
                             <span className="text-base">Back</span>
                         </button>

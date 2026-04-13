@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal'
 import { createAssignment, fetchAssignmentsForUser } from '@/lib/assignments/firestore'
 import type { Assignment, AssignmentAnalysis, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
-import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
+import { useAuth } from '@/lib/authContext'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 
 const formatDate = (value: string) =>
@@ -27,8 +27,7 @@ export function AssignmentDashboard() {
   const [dashboardLoading, setDashboardLoading] = useState(true)
   const [error, setError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
-
-  const { user, loading } = useAuthenticatedUser();
+  const { user, loading } = useAuth();
 
   // Redirect to signin if not logged in
   useEffect(() => {
@@ -55,11 +54,11 @@ export function AssignmentDashboard() {
         setDashboardLoading(false)
       }
     }
-
     void loadAssignments()
   }, [user])
 
-  // Calculate stats for the dashboard
+  // Calculate stats for the dashboard. 
+  // TO DO: Good for now, but if there are >50 assignments, then fetch from db directly
   const stats = useMemo(() => {
     const active = assignments.length
     const dueSoon = assignments.filter((assignment) => daysUntil(assignment.deadline) <= 3).length
@@ -110,7 +109,13 @@ export function AssignmentDashboard() {
   }
 
   if (!user) {
-    return null
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f5ef] pt-24">
+        <div className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm">
+          User not logged In...
+        </div>
+      </div>
+    )
   }
 
   return (

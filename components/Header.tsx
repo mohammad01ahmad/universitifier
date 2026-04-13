@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { auth } from '@/lib/Database/Firebase'
+import { auth } from '@/lib/database/Firebase'
 import { signOut } from 'firebase/auth'
 
 function Header() {

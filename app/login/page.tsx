@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { auth } from '@/lib/Database/Firebase'
+import { auth } from '@/lib/database/Firebase'
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { FcGoogle } from 'react-icons/fc'
 import { FirebaseError } from 'firebase/app'
@@ -11,14 +11,17 @@ import { IoSchoolSharp } from "react-icons/io5";
 import { FaArrowLeft } from "react-icons/fa";
 import { Loader2 } from 'lucide-react';
 
-// TO DO: Error in the sign in function, not signing in properly.
-
 function Page() {
     const router = useRouter()
     const provider = new GoogleAuthProvider();
 
     const [formError, setFormError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+
+    // This line forces the account selection screen
+    provider.setCustomParameters({
+        prompt: 'select_account'
+    });
 
     const handleGoogleSignIn = async () => {
         setIsLoading(true);
@@ -77,10 +80,7 @@ function Page() {
             {/* <!-- TopAppBar --> */}
             <nav className="fixed top-0 left-0 right-0 z-50 bg-transparent">
                 <div className="flex justify-between items-center w-full px-8 py-6 max-w-7xl mx-auto">
-                    <div className="text-2xl font-bold text-emerald-900 font-headline tracking-tight">Universitifier</div>
-                    <div className="hidden md:flex items-center space-x-8">
-                        <a className="text-emerald-800 font-semibold font-['Inter']" href="#">Sign In</a>
-                    </div>
+                    <div onClick={() => router.push('/')} className="text-2xl font-bold text-emerald-900 font-headline tracking-tight cursor-pointer">Universitifier</div>
                 </div>
             </nav>
 

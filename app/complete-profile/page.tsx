@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
-import { auth, db } from '@/lib/Database/Firebase'
+import { auth, db } from '@/lib/database/Firebase'
 import { useRouter } from 'next/navigation'
 
 export default function CompleteProfile() {

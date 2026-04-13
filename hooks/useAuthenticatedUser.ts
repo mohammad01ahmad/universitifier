@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 
-import { auth, db } from '@/lib/Database/Firebase'
+import { auth, db } from '@/lib/database/Firebase'
 
 export const useAuthenticatedUser = () => {
   const [user, setUser] = useState<User | null>(null)
@@ -26,9 +26,9 @@ export const useAuthenticatedUser = () => {
           const data = userDoc.data()
           setUserName(
             (typeof data.name === 'string' && data.name) ||
-              (typeof data.displayName === 'string' && data.displayName) ||
-              nextUser.displayName ||
-              'Student'
+            (typeof data.displayName === 'string' && data.displayName) ||
+            nextUser.displayName ||
+            'Student'
           )
         } else {
           setUserName(nextUser.displayName || 'Student')

@@ -1,16 +1,7 @@
-'use client'
-
 import { addDoc, collection, doc, getDoc, getDocs, query, updateDoc, where, } from 'firebase/firestore'
-import { db } from '@/lib/Database/Firebase'
+import { db } from '@/lib/database/Firebase'
 import { buildAssignmentStateFromSeed, calculateProgress, createSeededAssignmentState, deriveAssignmentTitle, evaluateReview, } from '@/lib/assignments/intelligence'
-import type {
-  Assignment,
-  AssignmentChecklistItem,
-  AssignmentReference,
-  CreateAssignmentInput,
-  ResearchGuidanceResponse,
-  SectionGuidance,
-} from '@/lib/assignments/types'
+import type { Assignment, AssignmentChecklistItem, AssignmentReference, CreateAssignmentInput, ResearchGuidanceResponse, SectionGuidance } from '@/lib/assignments/types'
 
 const assignmentsCollection = collection(db, 'assignments')
 

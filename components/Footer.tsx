@@ -16,7 +16,7 @@ function Footer() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-7xl mx-auto border-t border-zinc-200 dark:border-zinc-800 pt-12">
         <div>
           <div className="text-lg font-bold text-emerald-900 dark:text-emerald-50 mb-2 font-headline tracking-tight">Universitifier</div>
-          <p className="text-zinc-500 font-body text-sm max-w-xs mb-8">© 2024 Universitifier.</p>
+          <p className="text-zinc-500 font-body text-sm max-w-xs mb-8">© 2026 Universitifier.</p>
           <div className="flex space-x-6">
             <a className="text-zinc-400 hover:text-emerald-600 transition-colors" href="#">
               <ImEarth size={24} />

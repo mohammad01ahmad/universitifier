@@ -109,13 +109,7 @@ export function AssignmentDashboard() {
   }
 
   if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f7f5ef] pt-24">
-        <div className="rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm">
-          User not logged In...
-        </div>
-      </div>
-    )
+    return null
   }
 
   return (

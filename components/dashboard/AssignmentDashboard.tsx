@@ -55,7 +55,7 @@ export function AssignmentDashboard() {
       }
     }
     void loadAssignments()
-  }, [user])
+  }, [user?.uid])
 
   // Calculate stats for the dashboard. 
   // TO DO: Good for now, but if there are >50 assignments, then fetch from db directly

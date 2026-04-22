@@ -2,16 +2,9 @@ import { adminAuth, adminDb } from "@/lib/database/firebaseAdmin";
 import { cookies, headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { validateCsrf } from "@/lib/security/csrfProtection";
-import { logger } from "@/lib/logger"
+// import { logger } from "@/lib/logger"
 
 export async function POST(request: NextRequest) {
-    const headerList = await headers();
-    const requestId = headerList.get('x-request-id') || 'internal';
-
-    // Create a child logger for this specific request
-    const reqLog = logger.child({ requestId });
-
-    reqLog.info('Starting user login')
 
     try {
         const { idToken } = await request.json();
@@ -70,7 +63,7 @@ export async function POST(request: NextRequest) {
         }, { status: 200 });
 
     } catch (error) {
-        reqLog.error('Loggin API Error')
+        console.error('Loggin API Error')
         return Response.json({ error: "Login API Error", details: error }, { status: 500 });
     }
 }

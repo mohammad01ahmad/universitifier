@@ -9,7 +9,7 @@ import { CreateAssignmentModal } from '@/components/assignments/CreateAssignment
 import { Button } from '@/components/ui/button'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 import { createAssignment, fetchAssignmentsForUser } from '@/lib/assignments/firestore'
-import type { Assignment, AssignmentAnalysis, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
+import type { Assignment, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
 import { DashboardHeader } from '../dashboard/DashboardHeader'
 
 const formatDate = (value: string) =>
@@ -63,7 +63,6 @@ export function AssignmentsIndex() {
     uploads: AssignmentUpload[]
     upload: AssignmentUpload
     parsed: ParsedAssignmentSeed
-    analysis: AssignmentAnalysis
     wordCountTarget: number
     deadline: string
   }) => {

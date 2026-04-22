@@ -25,6 +25,21 @@ export type AssignmentStructureResponse = {
   sections: AssignmentStructureSection[]
 }
 
+export type AssignmentWorkspaceIntelligenceSection = {
+  title: string
+  word_count: number
+  purpose: string
+  guidance: SectionGuidance
+  researchGuidance: ResearchGuidanceResponse
+}
+
+export type AssignmentWorkspaceIntelligenceResponse = {
+  title?: string
+  analysisText: string
+  breakdown: AssignmentBreakdown
+  outline: AssignmentWorkspaceIntelligenceSection[]
+}
+
 export type AssignmentChecklistItem = {
   id: string
   label: string

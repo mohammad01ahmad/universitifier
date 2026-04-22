@@ -7,7 +7,7 @@ import { ArrowRight, CalendarClock, FilePenLine, FolderOpen, Target, } from 'luc
 import { Button } from '@/components/ui/button'
 import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal'
 import { createAssignment, fetchAssignmentsForUser } from '@/lib/assignments/firestore'
-import type { Assignment, AssignmentAnalysis, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
+import type { Assignment, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
 import { useAuth } from '@/lib/authContext'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 
@@ -79,7 +79,6 @@ export function AssignmentDashboard() {
     uploads: AssignmentUpload[]
     upload: AssignmentUpload
     parsed: ParsedAssignmentSeed
-    analysis: AssignmentAnalysis
     wordCountTarget: number
     deadline: string
   }) => {

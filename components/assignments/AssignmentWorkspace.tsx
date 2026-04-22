@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button'
 import { ReferenceGenerator } from '@/components/ReferenceGenerator'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 import { applyAssistAction, computeSectionAnchors, extractSectionText, getActiveSectionId } from '@/lib/assignments/intelligence'
-import { fetchAssignmentById, persistAssignmentSectionIntelligence, recomputeAssignmentState, renameAssignmentOutlineSection, updateAssignment } from '@/lib/assignments/firestore'
-import { fetchAssignmentReview, fetchResearchGuidance, fetchSectionGuidance } from '@/lib/assignments/parser'
+import { fetchAssignmentById, recomputeAssignmentState, renameAssignmentOutlineSection, updateAssignment } from '@/lib/assignments/firestore'
+import { fetchAssignmentReview } from '@/lib/assignments/parser'
 import type { Assignment, AssignmentReference, AssignmentReviewResponse, AssistAction, ResearchGuidanceResponse, SectionGuidance } from '@/lib/assignments/types'
 import AssignmentHeader from './AssignmentHeader'
 
@@ -278,15 +278,6 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     liveAssignment && activeSection
       ? extractSectionText(liveAssignment.document, liveAssignment.sectionAnchors, activeSection.id)
       : ''
-  const assignmentContext =
-    liveAssignment
-      ? [
-        liveAssignment.title,
-        liveAssignment.analysisText,
-        ...liveAssignment.breakdown.requirements,
-        ...liveAssignment.breakdown.hiddenExpectations,
-      ].filter(Boolean).join('\n')
-      : ''
 
   useEffect(() => {
     if (!assignment || editorContent === normalizeEditorContent(assignment.document)) return
@@ -351,75 +342,15 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
   useEffect(() => {
     if (!assignment || !liveAssignment || !activeSection) return
 
-    if (activeSection.guidance && activeSection.researchGuidance) {
-      setSectionGuidance(activeSection.guidance)
-      setResearchGuidance(activeSection.researchGuidance)
-      setGuidanceError('')
-      setGuidanceLoading(false)
-      return
-    }
-
-    let cancelled = false
-
-    const loadGuidance = async () => {
-      setGuidanceLoading(true)
-      setGuidanceError('')
-
-      try {
-        const nextSectionGuidance = activeSection.guidance ?? await fetchSectionGuidance({
-          sectionTitle: activeSection.title,
-          assignmentContext,
-          currentText: activeSectionText,
-        })
-        const nextResearchGuidance = activeSection.researchGuidance ?? await fetchResearchGuidance({
-          section: activeSection.title,
-          assignmentContext,
-        })
-
-        if (cancelled) return
-
-        const nextOutline = await persistAssignmentSectionIntelligence({
-          assignmentId: liveAssignment.id,
-          outline: assignment.outline,
-          sectionId: activeSection.id,
-          ...(activeSection.guidance ? {} : { guidance: nextSectionGuidance }),
-          ...(activeSection.researchGuidance ? {} : { researchGuidance: nextResearchGuidance }),
-        })
-
-        if (cancelled) return
-
-        setAssignment((current) =>
-          current
-            ? {
-              ...current,
-              outline: nextOutline,
-              updatedAt: new Date().toISOString(),
-            }
-            : current
-        )
-        setSectionGuidance(nextSectionGuidance)
-        setResearchGuidance(nextResearchGuidance)
-      } catch (loadError) {
-        if (cancelled) return
-        console.error(loadError)
-        setGuidanceError(
-          loadError instanceof Error ? loadError.message : 'We could not load section guidance right now.'
-        )
-        setSectionGuidance(null)
-        setResearchGuidance(null)
-      } finally {
-        if (!cancelled) {
-          setGuidanceLoading(false)
-        }
-      }
-    }
-
-    void loadGuidance()
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeSection, activeSectionText, assignment, assignmentContext, liveAssignment])
+    setGuidanceLoading(false)
+    setSectionGuidance(activeSection.guidance ?? null)
+    setResearchGuidance(activeSection.researchGuidance ?? null)
+    setGuidanceError(
+      activeSection.guidance && activeSection.researchGuidance
+        ? ''
+        : 'Guidance is unavailable for this older assignment.'
+    )
+  }, [activeSection, assignment, liveAssignment])
 
   const syncChecklist = async (nextChecklist: Assignment['checklist']) => {
     if (!assignment || !liveAssignment) return

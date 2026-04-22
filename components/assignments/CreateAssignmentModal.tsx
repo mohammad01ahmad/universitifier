@@ -3,9 +3,8 @@
 import React, { useState } from 'react'
 import { FileUp, Loader2, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { analyzeAssignmentWithGemini, generateStructureWithGemini, parseAssignmentWithGemini } from '@/lib/assignments/parser'
-import type { AssignmentAnalysis, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
-import { readFileAsBase64 } from '@/lib/assignments/parser'
+import { createWorkspaceIntelligenceWithGemini, readFileAsBase64 } from '@/lib/assignments/parser'
+import type { AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
 import { buildAggregatedParsedSeed, ParsedUpload } from '@/lib/assignments/parser'
 
 type CreateAssignmentModalProps = {
@@ -16,7 +15,6 @@ type CreateAssignmentModalProps = {
     uploads: AssignmentUpload[]
     upload: AssignmentUpload
     parsed: ParsedAssignmentSeed
-    analysis: AssignmentAnalysis
     wordCountTarget: number
     deadline: string
   }) => Promise<void>
@@ -35,14 +33,9 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const isParsing = uploads.some((item) => item.status === 'parsing')
-  const hasParseErrors = uploads.some((item) => item.status === 'error')
-  const parsedUploads = uploads.filter((item) => item.status === 'parsed' && item.parsed)
   const isReadyToGenerate =
     uploads.length > 0 &&
-    !isParsing &&
-    !hasParseErrors &&
-    parsedUploads.length === uploads.length
+    uploads.every((item) => item.status === 'uploaded')
 
   if (!open) return null
 
@@ -56,7 +49,7 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
     }
 
     if (!isReadyToGenerate) {
-      setError('Wait for all uploaded documents to finish parsing before generating the workspace.')
+      setError('Resolve upload issues before generating the workspace.')
       return
     }
 
@@ -73,22 +66,17 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
     setSubmitting(true)
 
     try {
-      const readyUploads = parsedUploads.map((item) => item.upload)
-      const analysis = await analyzeAssignmentWithGemini({
+      const readyUploads = uploads.map((item) => item.upload)
+      const intelligence = await createWorkspaceIntelligenceWithGemini({
         title: formData.title,
         uploads: readyUploads,
-      })
-
-      const structure = await generateStructureWithGemini({
-        analysis,
-        wordCount: formData.wordCountTarget,
+        wordCountTarget: formData.wordCountTarget,
       })
 
       const parsed = buildAggregatedParsedSeed({
         title: formData.title,
-        analysis,
-        structure,
-        parsedUploads,
+        intelligence,
+        uploads,
       })
 
       await onSubmit({
@@ -96,7 +84,6 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
         uploads: readyUploads,
         upload: readyUploads[0],
         parsed,
-        analysis,
         wordCountTarget: Number(formData.wordCountTarget) || 1500,
         deadline: formData.deadline,
       })
@@ -132,7 +119,7 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
               Create a writing workspace
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Upload up to five assignment documents. Parsing starts immediately, and the workspace can only be generated once every file is ready.
+              Upload up to five assignment documents. Gemini runs once when you generate the workspace, not during upload.
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close create assignment dialog">
@@ -170,7 +157,7 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
                       : 'Upload assignment, rubric, or any relevant documents'}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Up to 5 files. Parsing starts immediately after upload.
+                    Up to 5 files. Files are prepared locally and analyzed only when you generate the workspace.
                   </p>
                 </div>
               </div>
@@ -211,48 +198,12 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
                             size: file.size,
                             base64,
                           },
-                          status: 'parsing' as const,
+                          status: 'uploaded' as const,
                         }
                       })
                     )
 
                     setUploads((current) => [...current, ...nextUploads])
-
-                    await Promise.all(
-                      nextUploads.map(async (item) => {
-                        try {
-                          const parsed = await parseAssignmentWithGemini({
-                            title: formData.title || item.upload.fileName.replace(/\.[^.]+$/, ''),
-                            upload: item.upload,
-                            wordCountTarget: Number(formData.wordCountTarget) || 1500,
-                          })
-
-                          setUploads((current) =>
-                            current.map((currentItem) =>
-                              currentItem.id === item.id
-                                ? { ...currentItem, status: 'parsed', parsed, error: undefined }
-                                : currentItem
-                            )
-                          )
-                        } catch (parseError) {
-                          console.error(parseError)
-                          setUploads((current) =>
-                            current.map((currentItem) =>
-                              currentItem.id === item.id
-                                ? {
-                                  ...currentItem,
-                                  status: 'error',
-                                  error:
-                                    parseError instanceof Error
-                                      ? parseError.message
-                                      : 'We could not parse this document.',
-                                }
-                                : currentItem
-                            )
-                          )
-                        }
-                      })
-                    )
                   } catch (uploadError) {
                     console.error(uploadError)
                     setError(
@@ -279,14 +230,12 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
 
                       <div className="flex items-center gap-3">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${item.status === 'parsed'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : item.status === 'error'
+                          className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${item.status === 'error'
                               ? 'bg-rose-100 text-rose-700'
-                              : 'bg-amber-100 text-amber-700'
+                              : 'bg-emerald-100 text-emerald-700'
                             }`}
                         >
-                          {item.status === 'parsed' ? 'Parsed' : item.status === 'error' ? 'Error' : 'Parsing'}
+                          {item.status === 'error' ? 'Error' : 'Ready'}
                         </span>
                         <Button
                           type="button"
@@ -310,12 +259,10 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
               </div>
             ) : null}
 
-            {isParsing ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <Loader2 className="size-4 animate-spin" />
-                Parsing uploaded documents. Generate Workspace will unlock once all files are ready.
-              </div>
-            ) : null}
+            <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              <Sparkles className="size-4" />
+              Workspace intelligence will be generated in one Gemini call when you press Generate Workspace.
+            </div>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -371,7 +318,7 @@ export function CreateAssignmentModal({ open, onClose, onSubmit }: CreateAssignm
                 disabled={submitting || !isReadyToGenerate}
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-                {submitting ? 'Generating Workspace...' : isParsing ? 'Parsing Documents...' : 'Generate Workspace'}
+                {submitting ? 'Generating Workspace...' : 'Generate Workspace'}
               </Button>
             </div>
           </div>

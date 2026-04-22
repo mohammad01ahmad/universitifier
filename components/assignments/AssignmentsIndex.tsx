@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, CalendarClock, FilePenLine, FolderOpen } from 'lucide-react'
+import { ArrowRight, CalendarClock, FilePenLine, FolderOpen, Trash2 } from 'lucide-react'
 
 import { CreateAssignmentModal } from '@/components/assignments/CreateAssignmentModal'
 import { Button } from '@/components/ui/button'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 import { createAssignment, fetchAssignmentsForUser } from '@/lib/assignments/firestore'
 import type { Assignment, AssignmentUpload, ParsedAssignmentSeed } from '@/lib/assignments/types'
+import { setCsrfToken } from '@/lib/security/csrfProtection'
 import { DashboardHeader } from '../dashboard/DashboardHeader'
 
 const formatDate = (value: string) =>
@@ -30,6 +31,8 @@ export function AssignmentsIndex() {
   const [loadingAssignments, setLoadingAssignments] = useState(true)
   const [error, setError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -58,6 +61,8 @@ export function AssignmentsIndex() {
     void loadAssignments()
   }, [user])
 
+  const canCreateAssignment = assignments.length === 0
+
   const handleCreate = async (values: {
     title: string
     uploads: AssignmentUpload[]
@@ -67,6 +72,11 @@ export function AssignmentsIndex() {
     deadline: string
   }) => {
     if (!user) return
+    if (!canCreateAssignment) {
+      setError('Beta limit reached. Delete your current assignment before creating a new one.')
+      setCreateOpen(false)
+      return
+    }
 
     const assignmentId = await createAssignment({
       userId: user.uid,
@@ -79,6 +89,47 @@ export function AssignmentsIndex() {
 
     setCreateOpen(false)
     router.push(`/profile/assignments/${assignmentId}`)
+  }
+
+  const handleDeleteAssignment = async () => {
+    if (!assignmentToDelete) return
+
+    setDeleteLoading(true)
+    setError('')
+
+    try {
+      const csrfToken = await setCsrfToken()
+      const response = await fetch('/api/v1/assignments/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
+        body: JSON.stringify({
+          assignmentId: assignmentToDelete.id,
+        }),
+      })
+
+      const data = await response.json() as { error?: string }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'We could not delete this assignment right now.')
+      }
+
+      setAssignments((current) =>
+        current.filter((assignment) => assignment.id !== assignmentToDelete.id)
+      )
+      setAssignmentToDelete(null)
+    } catch (deleteError) {
+      console.error(deleteError)
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : 'We could not delete this assignment right now.'
+      )
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   if (loading) {
@@ -109,9 +160,18 @@ export function AssignmentsIndex() {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
               Open any assignment directly from here, or create a new workspace when a fresh brief comes in.
             </p>
+            {!canCreateAssignment ? (
+              <div className="mt-4 inline-flex rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800">
+                Beta limit reached. Delete your current assignment to create a new one.
+              </div>
+            ) : null}
           </div>
 
-          <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => setCreateOpen(true)}>
+          <Button
+            className="bg-emerald-600 text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => setCreateOpen(true)}
+            disabled={!canCreateAssignment}
+          >
             <FilePenLine className="size-4" />
             New Assignment
           </Button>
@@ -151,13 +211,19 @@ export function AssignmentsIndex() {
                       : `${urgency} days left`
 
               return (
-                <Link
+                <div
                   key={assignment.id}
-                  href={`/profile/assignments/${assignment.id}`}
-                  className="block rounded-[1.6rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcff_100%)] p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg"
+                  className="relative rounded-[1.6rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcff_100%)] p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg"
                 >
+                  <Link
+                    href={`/profile/assignments/${assignment.id}`}
+                    className="absolute inset-0 rounded-[1.6rem]"
+                    aria-label={`Open ${assignment.title}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  />
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
+                    <div className="pointer-events-none min-w-0 relative z-10">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
                           {assignment.status.replace('_', ' ')}
@@ -185,7 +251,7 @@ export function AssignmentsIndex() {
                       </div>
                     </div>
 
-                    <div className="min-w-44 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div className="min-w-44 rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-3 relative z-20">
                       <div className="flex items-center justify-between text-sm text-slate-500">
                         <span>Progress</span>
                         <span className="font-semibold text-slate-900">{assignment.progressPercent}%</span>
@@ -196,13 +262,29 @@ export function AssignmentsIndex() {
                           style={{ width: `${assignment.progressPercent}%` }}
                         />
                       </div>
-                      <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-700">
-                        Open assignment
-                        <ArrowRight className="size-4" />
+                      <div className="mt-4 flex flex-col gap-2">
+                        <Link
+                          href={`/profile/assignments/${assignment.id}`}
+                          className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open assignment
+                          <ArrowRight className="size-4" />
+                        </Link>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="justify-center border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                          onClick={() => setAssignmentToDelete(assignment)}
+                        >
+                          <Trash2 className="size-4" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
-                </Link>
+                </div>
               )
             })}
           </section>
@@ -210,6 +292,39 @@ export function AssignmentsIndex() {
       </div>
 
       <CreateAssignmentModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} />
+
+      {assignmentToDelete ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_30px_80px_rgba(15,23,42,0.22)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-600">Delete Assignment</p>
+            <h3 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+              {assignmentToDelete.title}
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Are you sure you want to delete this assignment? This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAssignmentToDelete(null)}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="bg-rose-600 text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => void handleDeleteAssignment()}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   )
 }

@@ -19,6 +19,7 @@
     "firebase-admin": "^10.3.0",
     "framer-motion": "^12.38.0",
     "got": "^14.6.6",
+    "html2pdf.js": "^0.14.0",
     "jsdom": "^27.4.0",
     "lucide-react": "^0.562.0",
     "next": "^16.1.6",

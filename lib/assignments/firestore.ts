@@ -15,6 +15,14 @@ const normalizeAssignment = (id: string, data: Record<string, unknown>) =>
   }) as Assignment
 
 export const createAssignment = async (input: CreateAssignmentInput) => {
+  const existingAssignmentsSnapshot = await getDocs(
+    query(assignmentsCollection, where('userId', '==', input.userId))
+  )
+
+  if (!existingAssignmentsSnapshot.empty) {
+    throw new Error('Beta limit reached. You can only have one assignment at a time. Delete your current assignment to create a new one.')
+  }
+
   const now = new Date().toISOString()
   const intelligenceSeed = [input.title, input.upload.fileName].filter(Boolean).join(' ').trim()
   const seeded = input.parsed

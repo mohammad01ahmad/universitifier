@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle2, ClipboardCheck, FileSearch, GraduationCap, LibraryBig, Loader2, PencilLine, Sparkles, WandSparkles, X } from 'lucide-react'
-import type { Editor as TinyMCEEditorInstance } from 'tinymce'
+import { Editor, type Editor as TinyMCEEditorInstance } from 'tinymce'
 import { Button } from '@/components/ui/button'
 import { ReferenceGenerator } from '@/components/ReferenceGenerator'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
@@ -13,6 +13,7 @@ import { fetchAssignmentById, recomputeAssignmentState, renameAssignmentOutlineS
 import { fetchAssignmentReview } from '@/lib/assignments/parser'
 import type { Assignment, AssignmentReference, AssignmentReviewResponse, AssistAction, ResearchGuidanceResponse, SectionGuidance } from '@/lib/assignments/types'
 import AssignmentHeader from './AssignmentHeader'
+import html2pdf from 'html2pdf.js'
 
 const TinyMCEEditor = dynamic(
   () => import('@tinymce/tinymce-react').then((mod) => mod.Editor),
@@ -637,14 +638,33 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
     await navigator.clipboard.writeText(documentText)
   }
 
-  const handleDownload = () => {
-    const blob = new Blob([documentText], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `${(assignment?.title || 'assignment-draft').replace(/\s+/g, '-').toLowerCase()}.txt`
-    anchor.click()
-    URL.revokeObjectURL(url)
+  const handleDownload = async () => {
+    if (!editorRef.current) return;
+
+    // Dynamically import to keep the initial bundle small
+    const html2pdf = (await import('html2pdf.js')).default;
+
+    const content = editorRef.current.getContent();
+    const element = document.createElement('div');
+    element.innerHTML = content;
+    element.style.padding = '40px'; // Add some padding for the PDF look
+
+    const opt = {
+      margin: [10, 10, 10, 10] as [number, number, number, number],
+      filename: `${assignment?.title || 'assignment'}.pdf`,
+      image: {
+        type: 'jpeg',
+        quality: 0.98
+      },
+      html2canvas: { scale: 2 },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
+      }
+    } as const;
+
+    html2pdf().set(opt).from(element).save();
   }
 
   const handleRenameAssignmentTitle = async (title: string) => {

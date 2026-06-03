@@ -19,8 +19,8 @@ WORKDIR /app
 ENV NODE_ENV production
 
 # Create a non-root user for security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 # Copy only the compiled build files and required assets
 COPY --from=builder /app/public ./public

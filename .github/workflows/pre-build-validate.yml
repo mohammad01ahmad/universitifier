@@ -38,4 +38,6 @@ jobs:
 
       # 6. Step 3 of validation: Compile the production build
       - name: Run Next.js Build Production
+        env:
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
         run: npm run build

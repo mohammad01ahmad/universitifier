@@ -2,40 +2,40 @@ name: Next.js Pre-Build Validator
 
 # Trigger the workflow when code pushed to main branch, or on pull requests to main branch
 on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    validate-and-build:
-        runs-on: ubuntu-latest
+  validate-and-build:
+    runs-on: ubuntu-latest
 
-        steps:
-            # 1. Download the code onto the Github Runner
-            - name: Checkout Code
-              uses: actions/checkout@v4
+    steps:
+      # 1. Download the code onto the Github Runner
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            # 2. Set up Node.js environment
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm" # Automatically cahces node_modules for faster runs
+      # 2. Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm" # Automatically cahces node_modules for faster runs
 
-            # 3. Install Dependencies
-            - name: Install Dependencies
-              run: npm ci
+      # 3. Install Dependencies
+      - name: Install Dependencies
+        run: npm ci
 
-            # 4. Step 1 of validation: Run Next.js Linting
-            # This caches syntax errors, broken HTML tags, and bad Next.js patterns
-            - name: Run Next.js Lint
-              run: npm run lint
+      # 4. Step 1 of validation: Run Next.js Linting
+      # This caches syntax errors, broken HTML tags, and bad Next.js patterns
+      - name: Run Next.js Lint
+        run: npm run lint
 
-            # 5. Step 2 of validation: Run TypeScript Check
-            - name: Type Check Typescript
-              run: npx tsc --noEmit
+      # 5. Step 2 of validation: Run TypeScript Check
+      - name: Type Check Typescript
+        run: npx tsc --noEmit
 
-            # 6. Step 3 of validation: Compile the production build
-            - name: Run Next.js Build Production
-              run: npm run build
+      # 6. Step 3 of validation: Compile the production build
+      - name: Run Next.js Build Production
+        run: npm run build

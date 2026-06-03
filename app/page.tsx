@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import { useRouter } from "next/navigation";
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import { BsStars } from "react-icons/bs";
@@ -11,11 +10,12 @@ import { MdDashboard } from "react-icons/md";
 import { MdGroups2 } from "react-icons/md";
 import { FaRegCheckCircle } from "react-icons/fa";
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function HomePage() {
   const [visibleSections, setVisibleSections] = useState(new Set());
 
-  const router = useRouter();
+  // const router = useRouter();
 
   // for the animation effect for all components
   useEffect(() => {
@@ -63,13 +63,13 @@ export default function HomePage() {
             <div className="mt-12 flex items-center gap-4">
               <div className="flex -space-x-3">
                 <div className="w-10 h-10 rounded-full border-2 border-surface bg-zinc-300 overflow-hidden">
-                  <img className="w-full h-full object-cover" data-alt="portrait of a smiling female student with glasses in a library" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBoqjiVNynoPiT10Szrja_QUcpBiO7dhUoZn8XIhRV6u2BhvgMjmqJqtZyU7-1wk22Gq_iWms5JnURjzckayjUS4tL7uIiZVlk-_tEeoj45Xlx3AoowWbIFAOhVZn98UMyd4bf3TXayHnMei3eJ6E7KzrD1D4EvbPc2FN4BTL1kfwYKwt8R6PVmOEuMPKjnLjZ0FNGgoJfpM2e8G5sukNUwSeD05cmVmFlscF47Wk8-M4NakmQxEeps6TAs4VUCjGWUDUhTiJEoYUG" />
+                  <Image className="w-full h-full object-cover" alt="portrait of a smiling female student with glasses in a library" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBoqjiVNynoPiT10Szrja_QUcpBiO7dhUoZn8XIhRV6u2BhvgMjmqJqtZyU7-1wk22Gq_iWms5JnURjzckayjUS4tL7uIiZVlk-_tEeoj45Xlx3AoowWbIFAOhVZn98UMyd4bf3TXayHnMei3eJ6E7KzrD1D4EvbPc2FN4BTL1kfwYKwt8R6PVmOEuMPKjnLjZ0FNGgoJfpM2e8G5sukNUwSeD05cmVmFlscF47Wk8-M4NakmQxEeps6TAs4VUCjGWUDUhTiJEoYUG" />
                 </div>
                 <div className="w-10 h-10 rounded-full border-2 border-surface bg-zinc-300 overflow-hidden">
-                  <img className="w-full h-full object-cover" data-alt="headshot of a confident male university student outdoors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOeGXFmMOJZWzz0lY8iar4M9ht_0sgs16weovNYqryLkO8FI7D9MZ9zHoLRyX5iQKfaDGx5t1Gcn1Mycc59MfMPbDRkCXPo6ffRJLwoHaVT-DXX6fblOnTfZASXklFBhwXYYf7E_D7yKvlK3dacqZG1zkDRdVaRYNDDnQpxbI8_mGY519BazEixTrYBXtYN-QFVVrcRIxtu29pDTGAfrKGaXCcPqw-GysW1eiLVyZWjPiJ4QF95f3vFMo4-_JVVDUdPXpyUQ1oOXmD" />
+                  <Image className="w-full h-full object-cover" alt="headshot of a confident male university student outdoors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOeGXFmMOJZWzz0lY8iar4M9ht_0sgs16weovNYqryLkO8FI7D9MZ9zHoLRyX5iQKfaDGx5t1Gcn1Mycc59MfMPbDRkCXPo6ffRJLwoHaVT-DXX6fblOnTfZASXklFBhwXYYf7E_D7yKvlK3dacqZG1zkDRdVaRYNDDnQpxbI8_mGY519BazEixTrYBXtYN-QFVVrcRIxtu29pDTGAfrKGaXCcPqw-GysW1eiLVyZWjPiJ4QF95f3vFMo4-_JVVDUdPXpyUQ1oOXmD" />
                 </div>
                 <div className="w-10 h-10 rounded-full border-2 border-surface bg-zinc-300 overflow-hidden">
-                  <img className="w-full h-full object-cover" data-alt="smiling young woman sitting in a modern study lounge" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4Fax36-DdBdy3ORJsKsq-VV3fp-bE_aQ-emWLOJqShPe35gZ2uE8l4EwebvqNf419_zCj7nla_XSu4OixSBNRQHWI5YYIMln05-a2L90gvAWfSHYm6sWa2dG4lvtvjcnIOq4YbvPoMhmCRtl9R9AFUypWCIihPCQ3I0fetGRev_vUmwNFfntJo6KQQSWQ6S9Qpfp8s9OxAo8fIthaBvTQl2flqt2tkpig5poedU0Y_Nf5AkhiRhO-TiS1ymPrrP9BS5077Ch_LBMY" />
+                  <Image className="w-full h-full object-cover" alt="smiling young woman sitting in a modern study lounge" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4Fax36-DdBdy3ORJsKsq-VV3fp-bE_aQ-emWLOJqShPe35gZ2uE8l4EwebvqNf419_zCj7nla_XSu4OixSBNRQHWI5YYIMln05-a2L90gvAWfSHYm6sWa2dG4lvtvjcnIOq4YbvPoMhmCRtl9R9AFUypWCIihPCQ3I0fetGRev_vUmwNFfntJo6KQQSWQ6S9Qpfp8s9OxAo8fIthaBvTQl2flqt2tkpig5poedU0Y_Nf5AkhiRhO-TiS1ymPrrP9BS5077Ch_LBMY" />
                 </div>
               </div>
               {/* <p className="text-sm text-on-surface-variant font-medium">Joined by <span className="text-primary font-bold">12,000+</span> elite scholars</p> */}
@@ -78,7 +78,7 @@ export default function HomePage() {
           <div className="relative">
             <div className="absolute -top-20 -right-20 w-96 h-96 bg-primary-container/30 rounded-full blur-3xl"></div>
             <div className="relative rounded-xl overflow-hidden shadow-2xl transform rotate-2 hover:rotate-0 transition-transform duration-700">
-              <img className="w-full h-full object-cover aspect-[4/3]" data-alt="high-angle artistic shot of a clean workspace with laptop, notebook, and green tea in soft morning light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEBAcm45kxPC-VNwyycJFhMoG4M1k1lwqgE7aa0RBUvQtpDG2CwGNJTg8-k3hm1azXBi2SbwQwrbDWVEDD5T0lNVkXUG7J9o0c5pLxHorezT8L4l3Cak-w1dx6AMvgSzCW9b3JDxCDrFj3H2H0LoKipWxgpUf98PP1O6IZ8EYE5m2MqC-ZfQA6NYuX7vtcoudaZ94vT11YaulmdhXU_mrN21QrAFGPqjtc0DhiiywkqKUX4PlRRpKnhANzy1itkEE3ZhFqVqFrPaJ2" />
+              <Image className="w-full h-full object-cover aspect-[4/3]" alt="high-angle artistic shot of a clean workspace with laptop, notebook, and green tea in soft morning light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEBAcm45kxPC-VNwyycJFhMoG4M1k1lwqgE7aa0RBUvQtpDG2CwGNJTg8-k3hm1azXBi2SbwQwrbDWVEDD5T0lNVkXUG7J9o0c5pLxHorezT8L4l3Cak-w1dx6AMvgSzCW9b3JDxCDrFj3H2H0LoKipWxgpUf98PP1O6IZ8EYE5m2MqC-ZfQA6NYuX7vtcoudaZ94vT11YaulmdhXU_mrN21QrAFGPqjtc0DhiiywkqKUX4PlRRpKnhANzy1itkEE3ZhFqVqFrPaJ2" />
               <div className="absolute bottom-6 left-6 right-6 p-6 glass-header rounded-xl border border-white/20">
                 <div className="flex justify-between items-center mb-4">
                   <span className="font-editorial text-lg">Active Session: Assignment Prep</span>
@@ -137,7 +137,7 @@ export default function HomePage() {
                 </ul>
               </div>
               <div className="flex-1 -mb-12 -mr-12 opacity-80 group-hover:opacity-100 transition-opacity">
-                <img className="rounded-tl-xl w-full h-full object-cover shadow-2xl" data-alt="minimalistic abstract data visualization with soft green and white tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUEu-Rj1xL-DyGf6UowE_WOe_TPHAZLQh1COJ-XjPUnSI_h1ntEyFsxXFmwBcq_RXg2XUSxurwXfyl0OCidppYDVuwCff6GYpFNtj6iM-NKB4SUAw2_8TWhN7uuCXyPRNLwhzkOcyQE_gO_x2tQ5DHtzGDVm3GuROTB95MQkOvszPuax_mBmDSZy4o7J0EcoIPh0wrv455ceSnPiIbFlTopgNnZPY3Tlu4gjOEUVuqQJhICOA18JTMOYpzV_y-3h5XcVz3m3jt6SxB" />
+                <Image className="rounded-tl-xl w-full h-full object-cover shadow-2xl" alt="minimalistic abstract data visualization with soft green and white tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUEu-Rj1xL-DyGf6UowE_WOe_TPHAZLQh1COJ-XjPUnSI_h1ntEyFsxXFmwBcq_RXg2XUSxurwXfyl0OCidppYDVuwCff6GYpFNtj6iM-NKB4SUAw2_8TWhN7uuCXyPRNLwhzkOcyQE_gO_x2tQ5DHtzGDVm3GuROTB95MQkOvszPuax_mBmDSZy4o7J0EcoIPh0wrv455ceSnPiIbFlTopgNnZPY3Tlu4gjOEUVuqQJhICOA18JTMOYpzV_y-3h5XcVz3m3jt6SxB" />
               </div>
             </div>
             {/* <!-- Feature 2: Smart Calendar --> */}
@@ -175,7 +175,7 @@ export default function HomePage() {
             <div className="md:col-span-2 bg-primary p-8 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-center gap-8">
               <div className="text-on-primary flex-1">
                 <h3 className="font-editorial text-3xl mb-4">Scholarly Catalyst Engine</h3>
-                <p className="opacity-90 leading-relaxed text-lg">We don't just list tasks. Our proprietary algorithm calculates "Prestige Momentum," rewarding consistent habits and deep-work sessions.</p>
+                <p className="opacity-90 leading-relaxed text-lg">We don&apos;t just list tasks. Our proprietary algorithm calculates &quot;Prestige Momentum,&quot; rewarding consistent habits and deep-work sessions.</p>
                 <button className="mt-8 bg-surface-container-lowest text-primary px-6 py-3 rounded-full font-bold hover:bg-white transition-colors">Learn Our Methodology</button>
               </div>
               <div className="flex-1 w-full flex justify-center">
@@ -199,7 +199,7 @@ export default function HomePage() {
       <section className="py-24 px-8">
         <div className="max-w-5xl mx-auto hero-gradient rounded-xl p-12 md:p-20 text-center relative overflow-hidden shadow-2xl">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <img className="w-full h-full object-cover" data-alt="abstract artistic background with swirling textures and light patterns" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9T09fxRjIx6BMIm_M1BA_77PUL3jSFngPyzM8x51TM17QvhQ-NXcsCNECKeQriFH6stS99G28ZoMZj8gMhxftn_GggqvG6utmBFtP6lXnwG5Jjtrv4kLT7C6AfwAzoqsE7EYuDfL8EXICzZ2VCSo670IKBuhmoTS9TL_MXF66EQM7b0Fbt7WvTy_3vPCo266WhARnTMLCnXGscAjFed5KRZDAA-eJ8CvbXhjvybEtoPxgkjHbUhs2gbnG62BrtTKU54tqA2UXwOHr" />
+            <Image className="w-full h-full object-cover" alt="abstract artistic background with swirling textures and light patterns" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9T09fxRjIx6BMIm_M1BA_77PUL3jSFngPyzM8x51TM17QvhQ-NXcsCNECKeQriFH6stS99G28ZoMZj8gMhxftn_GggqvG6utmBFtP6lXnwG5Jjtrv4kLT7C6AfwAzoqsE7EYuDfL8EXICzZ2VCSo670IKBuhmoTS9TL_MXF66EQM7b0Fbt7WvTy_3vPCo266WhARnTMLCnXGscAjFed5KRZDAA-eJ8CvbXhjvybEtoPxgkjHbUhs2gbnG62BrtTKU54tqA2UXwOHr" />
           </div>
           <div className="relative z-10">
             <h2 className="font-editorial text-4xl md:text-6xl text-on-primary mb-8 tracking-tighter">Ready to catalyze your potential?</h2>

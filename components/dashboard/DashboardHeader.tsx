@@ -5,7 +5,7 @@ import { FaChevronDown } from 'react-icons/fa'
 import { PiSignOutBold } from 'react-icons/pi'
 import Link from 'next/link'
 import { FaUser } from "react-icons/fa";
-
+import Image from 'next/image'
 
 export function DashboardHeader() {
     const { user, logout } = useAuth()
@@ -46,7 +46,7 @@ export function DashboardHeader() {
                     <div className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1 hover:bg-primary-container/10">
                         {/* Google account image or generic user image */}
                         {user?.photoURL ? (
-                            <img
+                            <Image
                                 alt="User profile avatar"
                                 className="h-10 w-10 rounded-full border-2 border-primary-container object-cover"
                                 src={user?.photoURL}

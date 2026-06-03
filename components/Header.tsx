@@ -7,18 +7,18 @@ import { auth } from '@/lib/database/Firebase'
 import { signOut } from 'firebase/auth'
 
 function Header() {
-  const pathName = usePathname()
-  const router = useRouter()
-  const isWorkspaceArea = pathName.startsWith('/profile')
+  // const pathName = usePathname()
+  // const router = useRouter()
+  // const isWorkspaceArea = pathName.startsWith('/profile')
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth)
-      router.push('/')
-    } catch (error) {
-      console.error('Logout error:', error)
-    }
-  }
+  // const handleLogout = async () => {
+  //   try {
+  //     await signOut(auth)
+  //     router.push('/')
+  //   } catch (error) {
+  //     console.error('Logout error:', error)
+  //   }
+  // }
 
   return (
     <nav className="fixed top-0 w-full z-50 glass-header shadow-sm">

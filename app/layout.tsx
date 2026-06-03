@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import { Inter, Geist, Space_Grotesk, Bricolage_Grotesque } from "next/font/google";
+import { Inter, Space_Grotesk, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/lib/authContext";
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter"

@@ -5,7 +5,7 @@ import { validateCsrf, clearToken } from "@/lib/security/csrfProtection";
 
 export async function POST(request: NextRequest) {
     const headerList = await headers();
-    const requestId = headerList.get('x-request-id') || 'internal';
+    // const requestId = headerList.get('x-request-id') || 'internal';
 
     // Create a child logger for this specific request
     // const reqLog = logger.child({ requestId });

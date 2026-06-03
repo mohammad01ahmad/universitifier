@@ -1,5 +1,5 @@
 import { adminAuth, adminDb } from "@/lib/database/firebaseAdmin";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { validateCsrf } from "@/lib/security/csrfProtection";
 // import { logger } from "@/lib/logger"

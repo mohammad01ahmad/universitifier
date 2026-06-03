@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { MdOutlineAlternateEmail } from "react-icons/md";
 import { ImEarth } from "react-icons/im";
+import { Link } from 'lucide-react';
 
 function Footer() {
   const pathname = usePathname()
@@ -30,17 +31,17 @@ function Footer() {
           <div>
             <h4 className="text-emerald-900 dark:text-emerald-50 font-bold text-sm uppercase tracking-widest mb-4">Product</h4>
             <nav className="flex flex-col space-y-3">
-              <a className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Features</a>
-              <a className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Pricing</a>
-              <a className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Methodology</a>
+              <Link className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Features</Link>
+              <Link className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Pricing</Link>
+              <Link className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Methodology</Link>
             </nav>
           </div>
           <div>
             <h4 className="text-emerald-900 dark:text-emerald-50 font-bold text-sm uppercase tracking-widest mb-4">Legal</h4>
             <nav className="flex flex-col space-y-3">
-              <a className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Privacy Policy</a>
-              <a className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Terms of Service</a>
-              <a className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Contact Support</a>
+              <Link className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Privacy Policy</Link>
+              <Link className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Terms of Service</Link>
+              <Link className="text-zinc-500 hover:text-emerald-600 transition-colors text-sm" href="/">Contact Support</Link>
             </nav>
           </div>
         </div>

@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, CheckCircle2, ClipboardCheck, FileSearch, GraduationCap, LibraryBig, Loader2, PencilLine, Sparkles, WandSparkles, X } from 'lucide-react'
-import { Editor, type Editor as TinyMCEEditorInstance } from 'tinymce'
+import { AlertCircle, CheckCircle2, ClipboardCheck, FileSearch, GraduationCap, LibraryBig, Loader2, PencilLine, Sparkles, X } from 'lucide-react'
+import { type Editor as TinyMCEEditorInstance } from 'tinymce'
 import { Button } from '@/components/ui/button'
 import { ReferenceGenerator } from '@/components/ReferenceGenerator'
 import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
@@ -13,21 +13,20 @@ import { fetchAssignmentById, recomputeAssignmentState, renameAssignmentOutlineS
 import { fetchAssignmentReview } from '@/lib/assignments/parser'
 import type { Assignment, AssignmentReference, AssignmentReviewResponse, AssistAction, ResearchGuidanceResponse, SectionGuidance } from '@/lib/assignments/types'
 import AssignmentHeader from './AssignmentHeader'
-import html2pdf from 'html2pdf.js'
 
 const TinyMCEEditor = dynamic(
   () => import('@tinymce/tinymce-react').then((mod) => mod.Editor),
   { ssr: false }
 )
 
-const assistActions: { id: AssistAction; label: string }[] = [
-  { id: 'academic-tone', label: 'Improve Academic Tone' },
-  { id: 'expand-idea', label: 'Expand This Idea' },
-  { id: 'simplify', label: 'Simplify' },
-  { id: 'critical-depth', label: 'Make More Critical' },
-  { id: 'add-example', label: 'Add Example' },
-  { id: 'continue-writing', label: 'Continue Writing' },
-]
+// const assistActions: { id: AssistAction; label: string }[] = [
+//   { id: 'academic-tone', label: 'Improve Academic Tone' },
+//   { id: 'expand-idea', label: 'Expand This Idea' },
+//   { id: 'simplify', label: 'Simplify' },
+//   { id: 'critical-depth', label: 'Make More Critical' },
+//   { id: 'add-example', label: 'Add Example' },
+//   { id: 'continue-writing', label: 'Continue Writing' },
+// ]
 
 const countWords = (value: string) => value.trim().split(/\s+/).filter(Boolean).length
 
@@ -571,21 +570,21 @@ export function AssignmentWorkspace({ assignmentId }: { assignmentId: string }) 
   }
 
   // Later on
-  const handleAssistAction = (action: AssistAction) => {
-    if (!liveAssignment || !editorRef.current || !activeSection) return
+  // const handleAssistAction = (action: AssistAction) => {
+  //   if (!liveAssignment || !editorRef.current || !activeSection) return
 
-    const { start, end } = getSelectionOffsets(editorRef.current)
-    const result = applyAssistAction({
-      action,
-      document: documentText,
-      selectionStart: start,
-      selectionEnd: end,
-      activeSectionText,
-    })
+  //   const { start, end } = getSelectionOffsets(editorRef.current)
+  //   const result = applyAssistAction({
+  //     action,
+  //     document: documentText,
+  //     selectionStart: start,
+  //     selectionEnd: end,
+  //     activeSectionText,
+  //   })
 
-    setEditorContent(plainTextToHtml(result.document))
-    setAssistMessage(result.message)
-  }
+  //   setEditorContent(plainTextToHtml(result.document))
+  //   setAssistMessage(result.message)
+  // }
 
   const handleAddReference = async (citation: string) => {
     if (!assignment) return
